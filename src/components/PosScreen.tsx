@@ -450,9 +450,9 @@ export const PosScreen: React.FC = () => {
               <button
                 type="button"
                 onClick={handleConfirmCheckout}
-                disabled={isSubmitting || cashReceivedNum < cartTotal}
+                disabled={isSubmitting}
                 className={`flex-1 h-12 rounded-xl font-black text-base flex items-center justify-center gap-2 text-white shadow-md transition-all ${
-                  isSubmitting || cashReceivedNum < cartTotal
+                  isSubmitting
                     ? 'bg-slate-300 cursor-not-allowed'
                     : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'
                 }`}

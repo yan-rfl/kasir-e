@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
   signOut,
   onAuthStateChanged,
   User as FirebaseUser,
@@ -11,7 +13,7 @@ import {
   browserLocalPersistence,
   indexedDBLocalPersistence,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { initFirebase, saveStoredFirebaseConfig, FirebaseClientConfig } from '@/lib/firebase';
 import { UserProfile, ReceiptOptions, PrintPreset } from '@/types';
 
@@ -23,8 +25,10 @@ interface AuthContextType {
   isLoading: boolean;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string, initialStoreName?: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   loginDemo: () => void;
   logout: () => Promise<void>;
+  deleteCurrentStoreAndAccount: () => Promise<void>;
   updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
   updateOwnerPin: (newPin: string) => Promise<void>;
   verifyOwnerPin: (pin: string) => boolean;
@@ -61,9 +65,6 @@ export const DEFAULT_PRINT_PRESETS: PrintPreset[] = [
 ];
 
 export const getDefaultStoreNameForUser = (email?: string | null): string => {
-  if (email && email.toLowerCase().trim() === 'ryan.rafael2004@gmail.com') {
-    return 'Pondok Bakso 168 by DOI';
-  }
   if (email && email.includes('@')) {
     const prefix = email.split('@')[0];
     const capitalized = prefix.charAt(0).toUpperCase() + prefix.slice(1);
@@ -242,6 +243,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogle = async () => {
+    const { auth, db } = initFirebase();
+    if (!auth) throw new Error('Firebase Auth belum dikonfigurasi.');
+    const provider = new GoogleAuthProvider();
+    const cred = await signInWithPopup(auth, provider);
+    setIsAuthenticated(true);
+    localStorage.setItem(STORAGE_KEY_LOCAL_AUTH, 'true');
+
+    if (cred.user && db) {
+      const userDocRef = doc(db, 'users', cred.user.uid);
+      const snap = await getDoc(userDocRef);
+      if (!snap.exists()) {
+        const storeName = getDefaultStoreNameForUser(cred.user.email);
+        const newConfig: UserProfile = {
+          uid: cred.user.uid,
+          email: cred.user.email,
+          displayName: cred.user.displayName || 'Pemilik Toko',
+          storeName,
+          ownerPin: '123456',
+          receiptHeader: `${storeName} - Struk Resmi Pembelian`,
+          receiptFooter: 'Terima Kasih Atas Kunjungan Anda',
+          receiptOptions: DEFAULT_RECEIPT_OPTIONS,
+          printPresets: DEFAULT_PRINT_PRESETS,
+          language: 'id',
+        };
+        await setDoc(userDocRef, newConfig);
+        setProfile(newConfig);
+        localStorage.setItem(STORAGE_KEY_LOCAL_PROFILE, JSON.stringify(newConfig));
+      }
+    }
+  };
+
+  const deleteCurrentStoreAndAccount = async () => {
+    const { auth, db } = initFirebase();
+    if (user && db) {
+      try {
+        await deleteDoc(doc(db, 'users', user.uid));
+      } catch (err) {
+        console.warn('Error deleting user Firestore doc:', err);
+      }
+    }
+    if (auth && auth.currentUser) {
+      try {
+        await auth.currentUser.delete();
+      } catch {
+        await signOut(auth);
+      }
+    }
+    setUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem(STORAGE_KEY_LOCAL_AUTH);
+    localStorage.removeItem(STORAGE_KEY_LOCAL_PROFILE);
+    localStorage.removeItem('kasire_menu_catalog_v2');
+    localStorage.removeItem('kasire_transactions_v2');
+    localStorage.removeItem('kasire_tx_counter_v2');
+    setProfile(DEFAULT_PROFILE);
+  };
+
   const loginDemo = () => {
     setIsAuthenticated(true);
     localStorage.setItem(STORAGE_KEY_LOCAL_AUTH, 'true');
@@ -310,8 +369,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         loginWithEmail,
         registerWithEmail,
+        loginWithGoogle,
         loginDemo,
         logout,
+        deleteCurrentStoreAndAccount,
         updateProfileData,
         updateOwnerPin,
         verifyOwnerPin,
