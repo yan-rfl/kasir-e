@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Transaction, PrintPreset } from '@/types';
 import { formatRupiah } from '@/lib/escpos';
+import { OrderItem } from '@/types';
 import {
   Receipt,
   Filter,
@@ -20,6 +21,9 @@ import {
   X,
   FileSpreadsheet,
   Check,
+  Pencil,
+  Plus,
+  Minus,
 } from 'lucide-react';
 
 interface TransactionsScreenProps {
@@ -31,6 +35,9 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
 }) => {
   const {
     transactions,
+    updateTransaction,
+    deleteTransaction,
+    menuItems,
     printSingleTransaction,
     printPresetSummaryReport,
     printKawulReport,
@@ -62,6 +69,16 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
   // Multi-select state: set of selected transaction IDs
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
 
+  // Edit Transaction State
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editItems, setEditItems] = useState<OrderItem[]>([]);
+  const [editNote, setEditNote] = useState<string>('');
+  const [selectedMenuIdToAdd, setSelectedMenuIdToAdd] = useState<string>('');
+  const [isCustomItemOpen, setIsCustomItemOpen] = useState<boolean>(false);
+  const [customItemName, setCustomItemName] = useState<string>('');
+  const [customItemPrice, setCustomItemPrice] = useState<string>('');
+  const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
+
   // Filter & Sort Modal State
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc'); // 'desc' = terbaru, 'asc' = terlama
@@ -81,6 +98,115 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
       ...prev,
       [dateKey]: !prev[dateKey],
     }));
+  };
+
+  // Edit Handlers
+  const handleOpenEdit = (tx: Transaction) => {
+    setEditingTx(tx);
+    setEditItems(tx.items.map((i) => ({ ...i })));
+    setEditNote(tx.note || '');
+    setSelectedMenuIdToAdd('');
+    setIsCustomItemOpen(false);
+    setCustomItemName('');
+    setCustomItemPrice('');
+  };
+
+  const handleUpdateItemQty = (index: number, newQty: number) => {
+    if (newQty <= 0) {
+      handleRemoveItem(index);
+      return;
+    }
+    setEditItems((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], quantity: newQty };
+      return copy;
+    });
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setEditItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddMenuToEdit = () => {
+    if (!selectedMenuIdToAdd) return;
+    const found = menuItems.find((m) => m.id === selectedMenuIdToAdd);
+    if (!found) return;
+
+    setEditItems((prev) => {
+      const existingIdx = prev.findIndex((i) => i.menuItemId === found.id);
+      if (existingIdx !== -1) {
+        const copy = [...prev];
+        copy[existingIdx] = {
+          ...copy[existingIdx],
+          quantity: copy[existingIdx].quantity + 1,
+        };
+        return copy;
+      }
+      return [
+        ...prev,
+        {
+          menuItemId: found.id,
+          name: found.name,
+          price: found.price,
+          quantity: 1,
+          category: found.category,
+        },
+      ];
+    });
+    setSelectedMenuIdToAdd('');
+  };
+
+  const handleAddCustomItem = () => {
+    if (!customItemName.trim()) return;
+    const priceNum = parseInt(customItemPrice, 10);
+    if (isNaN(priceNum) || priceNum < 0) return;
+
+    setEditItems((prev) => [
+      ...prev,
+      {
+        menuItemId: `custom-${Date.now()}`,
+        name: customItemName.trim(),
+        price: priceNum,
+        quantity: 1,
+        category: 'lainnya',
+      },
+    ]);
+    setCustomItemName('');
+    setCustomItemPrice('');
+    setIsCustomItemOpen(false);
+  };
+
+  const editTotal = useMemo(() => {
+    return editItems.reduce((acc, i) => acc + i.price * i.quantity, 0);
+  }, [editItems]);
+
+  const handleSaveEdit = async () => {
+    if (!editingTx) return;
+    if (editItems.length === 0) {
+      alert(t.txMustHaveItem);
+      return;
+    }
+    setIsSavingEdit(true);
+    try {
+      await updateTransaction(editingTx.id, {
+        items: editItems,
+        totalPrice: editTotal,
+        note: editNote.trim(),
+      });
+      setEditingTx(null);
+    } catch (err: any) {
+      alert(err.message || 'Gagal menyimpan transaksi');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteSingleTx = async () => {
+    if (!editingTx) return;
+    if (confirm(`Apakah Anda yakin ingin menghapus transaksi ${editingTx.id}?`)) {
+      await deleteTransaction(editingTx.id);
+      setEditingTx(null);
+    }
   };
 
   // Filter & Sort Logic
@@ -432,23 +558,43 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                               <div className="text-xs text-slate-600 mt-1 line-clamp-1">
                                 {tx.items.map((i) => `${i.name} (${i.quantity}x)`).join(', ')}
                               </div>
+                              {tx.note && (
+                                <div className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md mt-1 inline-block font-semibold">
+                                  Catatan: {tx.note}
+                                </div>
+                              )}
                             </div>
                           </div>
 
-                          {/* Price & Single Receipt Print Button */}
-                          <div className="flex items-center justify-between sm:justify-end gap-3 self-stretch sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                          {/* Price & Action Buttons */}
+                          <div className="flex items-center justify-between sm:justify-end gap-2 self-stretch sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                             <span className="font-black text-emerald-700 text-base">
                               Rp {formatRupiah(tx.totalPrice)}
                             </span>
 
-                            <button
-                              onClick={() => printSingleTransaction(tx)}
-                              className="py-1.5 px-3 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-bold text-xs flex items-center gap-1.5 border border-slate-200 transition-all active:scale-95"
-                              title="Cetak Struk Transaksi Ini"
-                            >
-                              <Printer className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>{t.printReceipt}</span>
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              {/* Edit Transaction Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(tx)}
+                                className="py-1.5 px-2.5 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-bold text-xs flex items-center gap-1 border border-slate-200 transition-all active:scale-95"
+                                title="Edit Transaksi Ini"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>{t.editTransaction}</span>
+                              </button>
+
+                              {/* Print Button */}
+                              <button
+                                type="button"
+                                onClick={() => printSingleTransaction(tx)}
+                                className="py-1.5 px-2.5 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-bold text-xs flex items-center gap-1 border border-slate-200 transition-all active:scale-95"
+                                title="Cetak Struk Transaksi Ini"
+                              >
+                                <Printer className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="hidden xs:inline">{t.printReceipt}</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -582,6 +728,258 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                   className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white text-xs shadow-md"
                 >
                   {t.applyFilter}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200">
+            {/* Header */}
+            <div className="bg-emerald-600 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+              <div>
+                <h3 className="text-base sm:text-lg font-black flex items-center gap-2">
+                  <Pencil className="w-5 h-5" />
+                  {t.editTxTitle} {editingTx.id}
+                </h3>
+                <p className="text-xs text-emerald-100 mt-0.5">
+                  {new Date(editingTx.timestamp).toLocaleString(
+                    language === 'id' ? 'id-ID' : 'en-US',
+                    {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    }
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTx(null)}
+                className="w-8 h-8 rounded-full bg-emerald-700/60 hover:bg-emerald-700 text-white flex items-center justify-center transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Items List */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                    {t.editTxItems} ({editItems.length})
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-semibold">
+                    Ketuk +/- untuk ubah jumlah
+                  </span>
+                </div>
+
+                {editItems.length === 0 ? (
+                  <div className="p-4 text-center rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                    {t.txMustHaveItem}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {editItems.map((item, index) => (
+                      <div
+                        key={`${item.menuItemId}-${index}`}
+                        className="p-2.5 sm:p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">
+                            {item.name}
+                          </h4>
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            @ Rp {formatRupiah(item.price)}
+                          </span>
+                        </div>
+
+                        {/* Stepper & Total */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center bg-white rounded-xl border border-slate-300 shadow-sm overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateItemQty(index, item.quantity - 1)}
+                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:bg-slate-200 transition-all"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="w-8 text-center font-black text-xs sm:text-sm text-slate-800">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateItemQty(index, item.quantity + 1)}
+                              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:bg-slate-200 transition-all"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <span className="font-black text-xs sm:text-sm text-emerald-700 min-w-[70px] text-right">
+                            Rp {formatRupiah(item.price * item.quantity)}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(index)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                            title="Hapus Item"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add Menu Item to this transaction */}
+              <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-2.5">
+                <div className="text-xs font-bold text-emerald-950 flex items-center justify-between">
+                  <span>{t.addItemToTx}</span>
+                </div>
+
+                <div className="flex gap-2">
+                  <select
+                    value={selectedMenuIdToAdd}
+                    onChange={(e) => setSelectedMenuIdToAdd(e.target.value)}
+                    className="flex-1 py-2 px-3 rounded-xl border border-emerald-300 bg-white text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">-- Pilih Menu dari Katalog --</option>
+                    {menuItems.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} - Rp {formatRupiah(m.price)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={handleAddMenuToEdit}
+                    disabled={!selectedMenuIdToAdd}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1 transition-all shadow-sm ${
+                      selectedMenuIdToAdd
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Tambah</span>
+                  </button>
+                </div>
+
+                {/* Option to add custom item not in catalog */}
+                <div className="pt-1">
+                  {!isCustomItemOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomItemOpen(true)}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 underline"
+                    >
+                      + Tambah Menu Kustom (Bukan dari katalog)
+                    </button>
+                  ) : (
+                    <div className="space-y-2 bg-white p-2.5 rounded-xl border border-emerald-200 mt-1">
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={customItemName}
+                          onChange={(e) => setCustomItemName(e.target.value)}
+                          placeholder="Nama menu kustom"
+                          className="py-1.5 px-2.5 rounded-lg border border-slate-300 text-xs"
+                        />
+                        <input
+                          type="number"
+                          value={customItemPrice}
+                          onChange={(e) => setCustomItemPrice(e.target.value)}
+                          placeholder="Harga (Rp)"
+                          className="py-1.5 px-2.5 rounded-lg border border-slate-300 text-xs"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsCustomItemOpen(false)}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-bold"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddCustomItem}
+                          disabled={!customItemName.trim() || !customItemPrice}
+                          className="px-3 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold disabled:bg-slate-200 disabled:text-slate-400"
+                        >
+                          Tambahkan
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Order Note */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {t.customerNote}
+                </label>
+                <input
+                  type="text"
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  placeholder={t.notePlaceholder}
+                  className="w-full py-2 px-3 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Total Summary */}
+              <div className="p-3.5 rounded-2xl bg-slate-100 flex items-center justify-between border border-slate-200">
+                <span className="text-xs font-bold text-slate-600">
+                  {t.totalPay} Baru
+                </span>
+                <span className="text-lg font-black text-emerald-800">
+                  Rp {formatRupiah(editTotal)}
+                </span>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleDeleteSingleTx}
+                className="py-2.5 px-3 rounded-xl text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center gap-1 border border-rose-200 transition-all"
+                title="Hapus Transaksi Ini"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Hapus</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingTx(null)}
+                  className="py-2.5 px-4 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition-all"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={isSavingEdit || editItems.length === 0}
+                  className={`py-2.5 px-5 rounded-xl font-black text-xs text-white shadow-md transition-all ${
+                    isSavingEdit || editItems.length === 0
+                      ? 'bg-slate-300 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95'
+                  }`}
+                >
+                  {isSavingEdit ? t.savingChanges : t.saveChanges}
                 </button>
               </div>
             </div>

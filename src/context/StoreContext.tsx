@@ -42,6 +42,8 @@ interface StoreContextType {
   
   // Checkout & Transactions
   checkout: (note?: string, autoPrint?: boolean) => Promise<Transaction>;
+  updateTransaction: (txId: string, updatedData: Partial<Transaction>) => Promise<void>;
+  deleteTransaction: (txId: string) => Promise<void>;
   resetAllTransactions: () => Promise<void>;
   
   // Menu Actions
@@ -430,6 +432,67 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newTx;
   };
 
+  // Update Existing Transaction
+  const updateTransaction = async (txId: string, updatedData: Partial<Transaction>) => {
+    const existing = transactions.find((t) => t.id === txId);
+    if (!existing) return;
+
+    const fullTx: Transaction = {
+      ...existing,
+      ...updatedData,
+    };
+
+    // Recalculate total price if items changed
+    if (updatedData.items) {
+      fullTx.totalPrice = updatedData.items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+    }
+
+    const nextTransactions = transactions.map((t) =>
+      t.id === txId ? fullTx : t
+    );
+    setTransactions(nextTransactions);
+
+    if (isFirebaseConfigured && user) {
+      const { db } = initFirebase();
+      if (db) {
+        const txDoc = doc(db, 'users', user.uid, 'transactions', txId);
+        const firestoreData: any = {
+          id: fullTx.id,
+          counter: fullTx.counter,
+          userId: fullTx.userId || user.uid,
+          timestamp: fullTx.timestamp,
+          items: fullTx.items,
+          totalPrice: fullTx.totalPrice,
+        };
+        if (fullTx.note && fullTx.note.trim()) {
+          firestoreData.note = fullTx.note.trim();
+        }
+        await setDoc(txDoc, firestoreData);
+      }
+    } else {
+      localStorage.setItem(STORAGE_KEY_TX, JSON.stringify(nextTransactions));
+    }
+  };
+
+  // Delete Single Transaction
+  const deleteTransaction = async (txId: string) => {
+    const nextTransactions = transactions.filter((t) => t.id !== txId);
+    setTransactions(nextTransactions);
+
+    if (isFirebaseConfigured && user) {
+      const { db } = initFirebase();
+      if (db) {
+        const txDoc = doc(db, 'users', user.uid, 'transactions', txId);
+        await deleteDoc(txDoc);
+      }
+    } else {
+      localStorage.setItem(STORAGE_KEY_TX, JSON.stringify(nextTransactions));
+    }
+  };
+
   // Reset All Transactions
   const resetAllTransactions = async () => {
     if (isFirebaseConfigured && user) {
@@ -614,6 +677,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         removeFromCart,
         clearCart,
         checkout,
+        updateTransaction,
+        deleteTransaction,
         resetAllTransactions,
         addMenuItem,
         updateMenuItem,

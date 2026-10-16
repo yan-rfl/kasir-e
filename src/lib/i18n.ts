@@ -103,6 +103,15 @@ export const translations = {
     noTransactionsHint: 'Transaksi yang diselesaikan di kasir akan muncul di sini',
     today: 'Hari Ini',
     receiptsCount: 'struk',
+    editTransaction: 'Edit',
+    editTxTitle: 'Edit Transaksi',
+    editTxSubtitle: 'Ubah jumlah item, tambah item, atau perbarui catatan',
+    editTxItems: 'Daftar Menu Transaksi',
+    addItemToTx: '+ Tambah Menu',
+    txMustHaveItem: 'Transaksi harus memiliki minimal 1 item menu!',
+    saveChanges: 'Simpan Perubahan',
+    savingChanges: 'Menyimpan...',
+    customItem: 'Menu Kustom',
 
     // Thermal Printer & Dialogs
     printerStatus: 'Status Printer Bluetooth',
@@ -266,6 +275,15 @@ export const translations = {
     noTransactionsHint: 'Transactions completed at checkout will show up here',
     today: 'Today',
     receiptsCount: 'receipts',
+    editTransaction: 'Edit',
+    editTxTitle: 'Edit Transaction',
+    editTxSubtitle: 'Modify quantities, add items, or update notes',
+    editTxItems: 'Transaction Order Items',
+    addItemToTx: '+ Add Item',
+    txMustHaveItem: 'Transaction must have at least 1 menu item!',
+    saveChanges: 'Save Changes',
+    savingChanges: 'Saving...',
+    customItem: 'Custom Item',
 
     // Thermal Printer & Dialogs
     printerStatus: 'Bluetooth Printer Status',
