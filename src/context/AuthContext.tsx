@@ -52,6 +52,8 @@ export const DEFAULT_PRINT_PRESETS: PrintPreset[] = [
     showItemQty: true,
     showItemPrice: true,
     showTotalPrice: true,
+    printStoreHeader: true,
+    printFooter: true,
   },
   {
     id: 'preset-mamah',
@@ -61,6 +63,8 @@ export const DEFAULT_PRINT_PRESETS: PrintPreset[] = [
     showItemQty: true,
     showItemPrice: true,
     showTotalPrice: true,
+    printStoreHeader: true,
+    printFooter: true,
   },
 ];
 

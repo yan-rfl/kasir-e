@@ -47,7 +47,11 @@ export interface PrintPreset {
   category?: string; // "all" | "makanan" | "minuman" | etc.
   showItemQty: boolean; // default true
   showItemPrice: boolean; // default true
-  showTotalPrice: boolean; // default true
+  showTotalPrice: boolean; // default true (shows transactions' grand total)
+  printStoreHeader?: boolean; // default true
+  printFooter?: boolean; // default true
+  customHeader?: string; // optional custom header
+  customFooter?: string; // optional custom footer
 }
 
 export interface UserProfile {

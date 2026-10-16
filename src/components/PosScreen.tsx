@@ -438,12 +438,12 @@ export const PosScreen: React.FC = () => {
               </label>
             </div>
 
-            {/* Modal Footer (Consistent Sizing) */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex gap-3">
+            {/* Modal Footer */}
+            <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setIsCheckoutModalOpen(false)}
-                className="flex-1 h-12 rounded-xl bg-white border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 transition-all text-sm"
+                className="px-4 sm:px-6 h-12 rounded-xl bg-white border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 transition-all text-xs sm:text-sm shrink-0"
               >
                 {t.cancel}
               </button>
@@ -451,14 +451,16 @@ export const PosScreen: React.FC = () => {
                 type="button"
                 onClick={handleConfirmCheckout}
                 disabled={isSubmitting}
-                className={`flex-1 h-12 rounded-xl font-black text-base flex items-center justify-center gap-2 text-white shadow-md transition-all ${
+                className={`flex-1 h-12 rounded-xl font-black text-xs sm:text-base flex items-center justify-center text-white shadow-md transition-all active:scale-[0.99] ${
                   isSubmitting
                     ? 'bg-slate-300 cursor-not-allowed'
                     : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'
                 }`}
               >
-                <Check className="w-5 h-5" />
-                <span>{isSubmitting ? '...' : t.confirmPaymentBtn}</span>
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2 mx-auto">
+                  <Check className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="whitespace-nowrap">{isSubmitting ? '...' : t.confirmPaymentBtn}</span>
+                </div>
               </button>
             </div>
           </div>

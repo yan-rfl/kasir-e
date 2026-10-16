@@ -140,7 +140,7 @@ export function generateKawulReceiptText(
 
   // Aggregate items with "bakso" in name (case-insensitive)
   const itemMap = new Map<string, { name: string; quantity: number; subtotal: number }>();
-  let grandTotal = 0;
+  let filteredBaksoSubtotal = 0;
   let totalBaksoItems = 0;
 
   for (const tx of transactions) {
@@ -152,7 +152,7 @@ export function generateKawulReceiptText(
         existing.subtotal += item.price * item.quantity;
         itemMap.set(key, existing);
 
-        grandTotal += item.price * item.quantity;
+        filteredBaksoSubtotal += item.price * item.quantity;
         totalBaksoItems += item.quantity;
       }
     }
@@ -169,8 +169,16 @@ export function generateKawulReceiptText(
     }
   }
 
+  // Full grand total of all items in the selected transactions
+  const transactionGrandTotal = transactions.reduce((acc, tx) => acc + (tx.totalPrice || 0), 0);
+
   lines.push(separator('-'));
-  lines.push(padLeftRight(`TOTAL (${totalBaksoItems} item)`, `Rp ${formatRupiah(grandTotal)}`));
+  if (filteredBaksoSubtotal > 0 && filteredBaksoSubtotal !== transactionGrandTotal) {
+    lines.push(padLeftRight(`Subtotal Bakso (${totalBaksoItems})`, `Rp ${formatRupiah(filteredBaksoSubtotal)}`));
+    lines.push(padLeftRight('TOTAL TRANSAKSI', `Rp ${formatRupiah(transactionGrandTotal)}`));
+  } else {
+    lines.push(padLeftRight(`TOTAL (${totalBaksoItems} item)`, `Rp ${formatRupiah(transactionGrandTotal)}`));
+  }
   lines.push(separator('='));
   lines.push(padCenter('Rekap Selesai'));
   lines.push('');
@@ -244,10 +252,23 @@ export function generateMamahReceiptText(
 export function generatePresetSummaryReceiptText(
   transactions: Transaction[],
   preset: PrintPreset,
-  storeName: string = 'KASIR-E'
+  storeName: string = 'KASIR-E',
+  headerAddress?: string,
+  footerNote?: string
 ): string {
   const lines: string[] = [];
-  lines.push(padCenter(storeName));
+
+  // Header option: check preset.printStoreHeader !== false
+  const shouldPrintHeader = preset.printStoreHeader !== false;
+  if (shouldPrintHeader) {
+    lines.push(padCenter(storeName));
+    if (preset.customHeader && preset.customHeader.trim()) {
+      lines.push(padCenter(preset.customHeader.trim()));
+    } else if (headerAddress && headerAddress.trim()) {
+      lines.push(padCenter(headerAddress.trim()));
+    }
+  }
+
   lines.push(padCenter(`*** ${preset.name.toUpperCase()} ***`));
   lines.push(separator('='));
 
@@ -265,7 +286,7 @@ export function generatePresetSummaryReceiptText(
   const targetCategory = (preset.category || 'all').toLowerCase();
 
   const itemMap = new Map<string, { name: string; quantity: number; subtotal: number }>();
-  let grandTotal = 0;
+  let filteredItemsSubtotal = 0;
   let totalItemsCount = 0;
 
   for (const tx of transactions) {
@@ -286,7 +307,7 @@ export function generatePresetSummaryReceiptText(
       existing.subtotal += item.price * item.quantity;
       itemMap.set(key, existing);
 
-      grandTotal += item.price * item.quantity;
+      filteredItemsSubtotal += item.price * item.quantity;
       totalItemsCount += item.quantity;
     }
   }
@@ -304,13 +325,36 @@ export function generatePresetSummaryReceiptText(
     }
   }
 
+  // Calculate grand total of all items in selected transactions
+  const transactionsGrandTotal = transactions.reduce((acc, tx) => acc + (tx.totalPrice || 0), 0);
+
   if (preset.showTotalPrice) {
     lines.push(separator('-'));
-    lines.push(padLeftRight(`TOTAL (${totalItemsCount} item)`, `Rp ${formatRupiah(grandTotal)}`));
+    // If a filter was applied and subtotal differs from grand total, show both subtotal and grand total
+    if (filteredItemsSubtotal > 0 && filteredItemsSubtotal !== transactionsGrandTotal) {
+      lines.push(padLeftRight(`Subtotal Item (${totalItemsCount})`, `Rp ${formatRupiah(filteredItemsSubtotal)}`));
+      lines.push(padLeftRight('TOTAL TRANSAKSI', `Rp ${formatRupiah(transactionsGrandTotal)}`));
+    } else {
+      lines.push(padLeftRight(`TOTAL (${totalItemsCount} item)`, `Rp ${formatRupiah(transactionsGrandTotal)}`));
+    }
   }
-  lines.push(separator('='));
-  lines.push(padCenter('Rekap Selesai'));
-  lines.push('');
+
+  // Footer option: check preset.printFooter !== false
+  const shouldPrintFooter = preset.printFooter !== false;
+  if (shouldPrintFooter) {
+    lines.push(separator('='));
+    if (preset.customFooter && preset.customFooter.trim()) {
+      lines.push(padCenter(preset.customFooter.trim()));
+    } else if (footerNote && footerNote.trim()) {
+      lines.push(padCenter(footerNote.trim()));
+    } else {
+      lines.push(padCenter('Rekap Selesai'));
+    }
+    lines.push('');
+  } else {
+    lines.push(separator('='));
+    lines.push('');
+  }
 
   return lines.join('\n');
 }

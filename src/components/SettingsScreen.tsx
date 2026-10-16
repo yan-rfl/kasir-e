@@ -98,6 +98,10 @@ export const SettingsScreen: React.FC = () => {
   const [presetShowQty, setPresetShowQty] = useState(true);
   const [presetShowPrice, setPresetShowPrice] = useState(true);
   const [presetShowTotal, setPresetShowTotal] = useState(true);
+  const [presetPrintHeader, setPresetPrintHeader] = useState(true);
+  const [presetPrintFooter, setPresetPrintFooter] = useState(true);
+  const [presetCustomHeader, setPresetCustomHeader] = useState('');
+  const [presetCustomFooter, setPresetCustomFooter] = useState('');
 
   // PIN Change Form
   const [oldPin, setOldPin] = useState('');
@@ -191,6 +195,10 @@ export const SettingsScreen: React.FC = () => {
     setPresetShowQty(true);
     setPresetShowPrice(true);
     setPresetShowTotal(true);
+    setPresetPrintHeader(true);
+    setPresetPrintFooter(true);
+    setPresetCustomHeader('');
+    setPresetCustomFooter('');
     setIsPresetModalOpen(true);
   };
 
@@ -202,6 +210,10 @@ export const SettingsScreen: React.FC = () => {
     setPresetShowQty(p.showItemQty ?? true);
     setPresetShowPrice(p.showItemPrice ?? true);
     setPresetShowTotal(p.showTotalPrice ?? true);
+    setPresetPrintHeader(p.printStoreHeader ?? true);
+    setPresetPrintFooter(p.printFooter ?? true);
+    setPresetCustomHeader(p.customHeader || '');
+    setPresetCustomFooter(p.customFooter || '');
     setIsPresetModalOpen(true);
   };
 
@@ -216,6 +228,9 @@ export const SettingsScreen: React.FC = () => {
       .map((k) => k.trim())
       .filter(Boolean);
 
+    const headerVal = presetCustomHeader.trim() || undefined;
+    const footerVal = presetCustomFooter.trim() || undefined;
+
     let updatedList: PrintPreset[];
     if (editingPreset) {
       updatedList = presets.map((p) =>
@@ -228,6 +243,10 @@ export const SettingsScreen: React.FC = () => {
               showItemQty: presetShowQty,
               showItemPrice: presetShowPrice,
               showTotalPrice: presetShowTotal,
+              printStoreHeader: presetPrintHeader,
+              printFooter: presetPrintFooter,
+              customHeader: headerVal,
+              customFooter: footerVal,
             }
           : p
       );
@@ -240,6 +259,10 @@ export const SettingsScreen: React.FC = () => {
         showItemQty: presetShowQty,
         showItemPrice: presetShowPrice,
         showTotalPrice: presetShowTotal,
+        printStoreHeader: presetPrintHeader,
+        printFooter: presetPrintFooter,
+        customHeader: headerVal,
+        customFooter: footerVal,
       };
       updatedList = [...presets, newPreset];
     }
@@ -882,10 +905,10 @@ Printer berfungsi dengan baik!
 
       {/* Preset Modal (Add / Edit) */}
       {isPresetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
-            <div className="bg-emerald-600 text-white p-5 flex items-center justify-between">
-              <h3 className="text-lg font-black flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200">
+            <div className="bg-emerald-600 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+              <h3 className="text-base sm:text-lg font-black flex items-center gap-2">
                 <Layers className="w-5 h-5" />
                 {editingPreset ? 'Edit Preset Rekap' : 'Tambah Preset Rekap Baru'}
               </h3>
@@ -898,7 +921,7 @@ Printer berfungsi dengan baik!
               </button>
             </div>
 
-            <form onSubmit={handleSavePreset} className="p-5 space-y-3.5">
+            <form onSubmit={handleSavePreset} className="p-4 sm:p-5 space-y-3.5 overflow-y-auto flex-1">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Nama Preset
@@ -974,29 +997,82 @@ Printer berfungsi dengan baik!
                 </label>
 
                 <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none">
-                  <span className="text-xs font-semibold text-slate-800">
-                    Cetak Total Keseluruhan (Grand Total)
-                  </span>
+                  <div>
+                    <span className="text-xs font-semibold text-slate-800 block">
+                      Cetak Total Transaksi Keseluruhan (Grand Total)
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      Menampilkan total transaksi lengkap meski menu difilter
+                    </span>
+                  </div>
                   <input
                     type="checkbox"
                     checked={presetShowTotal}
                     onChange={(e) => setPresetShowTotal(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 shrink-0 ml-2"
                   />
                 </label>
+
+                {/* Header Options */}
+                <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none">
+                    <span className="text-xs font-semibold text-slate-800">
+                      Cetak Header / Info Toko
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={presetPrintHeader}
+                      onChange={(e) => setPresetPrintHeader(e.target.checked)}
+                      className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                    />
+                  </label>
+                  {presetPrintHeader && (
+                    <input
+                      type="text"
+                      value={presetCustomHeader}
+                      onChange={(e) => setPresetCustomHeader(e.target.value)}
+                      placeholder="Header kustom rekap (opsional)"
+                      className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  )}
+                </div>
+
+                {/* Footer Options */}
+                <div className="pt-1.5 space-y-1.5">
+                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none">
+                    <span className="text-xs font-semibold text-slate-800">
+                      Cetak Footer / Catatan Penutup
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={presetPrintFooter}
+                      onChange={(e) => setPresetPrintFooter(e.target.checked)}
+                      className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                    />
+                  </label>
+                  {presetPrintFooter && (
+                    <input
+                      type="text"
+                      value={presetCustomFooter}
+                      onChange={(e) => setPresetCustomFooter(e.target.value)}
+                      placeholder="Footer kustom rekap (contoh: Rekap Selesai)"
+                      className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  )}
+                </div>
               </div>
 
-              <div className="pt-2 flex gap-2">
+              <div className="pt-3 flex gap-2">
                 <button
                   type="button"
                   onClick={() => setIsPresetModalOpen(false)}
-                  className="flex-1 h-11 rounded-xl bg-slate-100 font-bold text-slate-700 text-xs"
+                  className="flex-1 h-11 rounded-xl bg-slate-100 font-bold text-slate-700 text-xs hover:bg-slate-200 transition-all"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-black text-white text-xs shadow-md"
+                  className="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-black text-white text-xs shadow-md transition-all active:scale-[0.98]"
                 >
                   Simpan Preset
                 </button>

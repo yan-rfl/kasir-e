@@ -625,7 +625,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const printPresetSummaryReport = async (selectedTxs: Transaction[], preset: PrintPreset) => {
-    const text = generatePresetSummaryReceiptText(selectedTxs, preset, profile.storeName);
+    const text = generatePresetSummaryReceiptText(
+      selectedTxs,
+      preset,
+      profile.storeName,
+      profile.receiptHeader,
+      profile.receiptFooter
+    );
     const bytes = textToEscPosBytes(text);
     await dispatchPrintJob({
       title: preset.name,

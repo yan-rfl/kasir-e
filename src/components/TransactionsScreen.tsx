@@ -307,8 +307,30 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
     });
   };
 
+  // Automatically prune selections that fall outside of the current filtered transactions
+  React.useEffect(() => {
+    setSelectedTxIds((prev) => {
+      if (prev.size === 0) return prev;
+      const validIds = new Set(filteredTransactions.map((t) => t.id));
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (validIds.has(id)) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [filteredTransactions]);
+
+  const isAllFilteredSelected =
+    filteredTransactions.length > 0 &&
+    filteredTransactions.every((t) => selectedTxIds.has(t.id));
+
   const handleSelectAll = () => {
-    if (selectedTxIds.size === filteredTransactions.length) {
+    if (isAllFilteredSelected) {
       setSelectedTxIds(new Set());
     } else {
       setSelectedTxIds(new Set(filteredTransactions.map((t) => t.id)));
@@ -316,8 +338,8 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
   };
 
   const selectedList = useMemo(() => {
-    return transactions.filter((t) => selectedTxIds.has(t.id));
-  }, [transactions, selectedTxIds]);
+    return filteredTransactions.filter((t) => selectedTxIds.has(t.id));
+  }, [filteredTransactions, selectedTxIds]);
 
   const handlePrintPreset = async (preset: PrintPreset) => {
     if (selectedList.length === 0) {
@@ -401,19 +423,17 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
           onClick={handleSelectAll}
           className="flex items-center gap-2 font-black text-sm text-slate-800 hover:text-emerald-700 transition-all select-none"
         >
-          {selectedTxIds.size > 0 && selectedTxIds.size === filteredTransactions.length ? (
+          {isAllFilteredSelected ? (
             <CheckSquare className="w-5 h-5 text-emerald-600" />
           ) : (
             <Square className="w-5 h-5 text-slate-400" />
           )}
           <span>
-            {selectedTxIds.size === filteredTransactions.length && filteredTransactions.length > 0
-              ? t.deselectAll
-              : t.selectAll}
+            {isAllFilteredSelected ? t.deselectAll : t.selectAll}
           </span>
-          {selectedTxIds.size > 0 && (
+          {selectedList.length > 0 && (
             <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-black">
-              {selectedTxIds.size} {t.selectedCount}
+              {selectedList.length} {t.selectedCount}
             </span>
           )}
         </button>
