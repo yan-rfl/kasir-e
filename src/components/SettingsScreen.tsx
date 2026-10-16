@@ -7,6 +7,7 @@ import { useStore } from '@/context/StoreContext';
 import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
 import { textToEscPosBytes } from '@/lib/escpos';
 import { getStoredFirebaseConfig, saveStoredFirebaseConfig } from '@/lib/firebase';
+import { ReceiptOptions } from '@/types';
 import {
   Settings,
   Store,
@@ -18,8 +19,8 @@ import {
   LogIn,
   UserPlus,
   Check,
-  AlertCircle,
-  HelpCircle,
+  FileText,
+  Sliders,
 } from 'lucide-react';
 
 export const SettingsScreen: React.FC = () => {
@@ -38,10 +39,21 @@ export const SettingsScreen: React.FC = () => {
   const { triggerBrowserPrint } = useStore();
 
   // Store Info Form
-  const [storeName, setStoreName] = useState(profile.storeName || '');
+  const [storeName, setStoreName] = useState(profile.storeName || 'Pondok Bakso 168 DOI');
   const [receiptHeader, setReceiptHeader] = useState(profile.receiptHeader || '');
   const [receiptFooter, setReceiptFooter] = useState(profile.receiptFooter || '');
   const [isSavedStore, setIsSavedStore] = useState(false);
+
+  // Receipt Options Form (Requirement 6)
+  const defaultReceiptOpts: ReceiptOptions = {
+    printStoreName: profile.receiptOptions?.printStoreName ?? true,
+    printStoreAddress: profile.receiptOptions?.printStoreAddress ?? true,
+    printDateTime: profile.receiptOptions?.printDateTime ?? true,
+    printNotes: profile.receiptOptions?.printNotes ?? true,
+    printFooter: profile.receiptOptions?.printFooter ?? true,
+  };
+  const [receiptOpts, setReceiptOpts] = useState<ReceiptOptions>(defaultReceiptOpts);
+  const [isSavedReceiptOpts, setIsSavedReceiptOpts] = useState(false);
 
   // PIN Change Form
   const [oldPin, setOldPin] = useState('');
@@ -77,14 +89,25 @@ export const SettingsScreen: React.FC = () => {
     setTimeout(() => setIsSavedStore(false), 2500);
   };
 
+  const handleToggleReceiptOpt = async (key: keyof ReceiptOptions) => {
+    const updated = {
+      ...receiptOpts,
+      [key]: !receiptOpts[key],
+    };
+    setReceiptOpts(updated);
+    await updateProfileData({ receiptOptions: updated });
+    setIsSavedReceiptOpts(true);
+    setTimeout(() => setIsSavedReceiptOpts(false), 2000);
+  };
+
   const handleUpdatePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (oldPin !== (profile.ownerPin || '123456')) {
-      setPinMessage({ text: 'PIN Lama salah!', error: true });
+      setPinMessage({ text: t.pinInvalid, error: true });
       return;
     }
     if (newPin.length !== 6 || !/^\d+$/.test(newPin)) {
-      setPinMessage({ text: 'PIN baru harus 6 digit angka!', error: true });
+      setPinMessage({ text: 'PIN harus 6 digit angka!', error: true });
       return;
     }
     await updateOwnerPin(newPin);
@@ -115,7 +138,7 @@ export const SettingsScreen: React.FC = () => {
 
   const handleTestPrint = async () => {
     const testContent = `================================
-          KASIR-E POS           
+     PONDOK BAKSO 168 DOI       
        TES CETAK THERMAL        
 ================================
 Waktu : ${new Date().toLocaleTimeString('id-ID')}
@@ -182,7 +205,7 @@ Printer berfungsi dengan baik!
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-28 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 py-6 pb-32 space-y-6">
       {/* Title */}
       <div>
         <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
@@ -190,75 +213,128 @@ Printer berfungsi dengan baik!
           {t.settingsTitle}
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Atur informasi rumah makan, printer struk, PIN pemilik, dan akun cloud
+          {t.settingsSubtitle}
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card 1: Store Information & Receipt */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-          <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-3">
-            <Store className="w-5 h-5 text-emerald-600" />
-            {t.storeInfo}
-          </h3>
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-3">
+              <Store className="w-5 h-5 text-emerald-600" />
+              {t.storeInfo}
+            </h3>
 
-          <form onSubmit={handleSaveStoreInfo} className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                {t.storeName}
-              </label>
-              <input
-                type="text"
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
-                required
-                className="w-full py-2 px-3 rounded-xl border border-slate-300 font-bold text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+            <form onSubmit={handleSaveStoreInfo} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {t.storeName}
+                </label>
+                <input
+                  type="text"
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  required
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 font-bold text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                {t.receiptHeader}
-              </label>
-              <input
-                type="text"
-                value={receiptHeader}
-                onChange={(e) => setReceiptHeader(e.target.value)}
-                placeholder="Alamat & Telepon"
-                className="w-full py-2 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {t.receiptHeader}
+                </label>
+                <input
+                  type="text"
+                  value={receiptHeader}
+                  onChange={(e) => setReceiptHeader(e.target.value)}
+                  placeholder="Jl. Raya No. 168 - Telp: 08123456789"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                {t.receiptFooter}
-              </label>
-              <input
-                type="text"
-                value={receiptFooter}
-                onChange={(e) => setReceiptFooter(e.target.value)}
-                placeholder="Pesan ucapan terima kasih"
-                className="w-full py-2 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {t.receiptFooter}
+                </label>
+                <input
+                  type="text"
+                  value={receiptFooter}
+                  onChange={(e) => setReceiptFooter(e.target.value)}
+                  placeholder="Terima Kasih - Selamat Menikmati"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
 
-            <button
-              type="submit"
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white text-xs shadow-sm flex items-center justify-center gap-1.5 transition-all"
-            >
-              {isSavedStore ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>Tersimpan!</span>
-                </>
-              ) : (
-                <span>{t.save} Informasi Toko</span>
-              )}
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white text-xs shadow-sm flex items-center justify-center gap-1.5 transition-all mt-2"
+              >
+                {isSavedStore ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Tersimpan!</span>
+                  </>
+                ) : (
+                  <span>{t.save} {t.storeInfo}</span>
+                )}
+              </button>
+            </form>
+          </div>
         </div>
 
-        {/* Card 2: 58mm Bluetooth Thermal Printer */}
+        {/* Card 2: Receipt Print Options (Requirement 6: Selective Receipt Printing) */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-emerald-600" />
+                {t.receiptOptionsTitle}
+              </h3>
+              {isSavedReceiptOpts && (
+                <span className="text-xs font-black text-emerald-700 flex items-center gap-1 animate-fadeIn">
+                  <Check className="w-3.5 h-3.5" /> Tersimpan
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+              {t.receiptOptionsSubtitle}
+            </p>
+
+            <div className="space-y-2.5">
+              {[
+                { key: 'printStoreName' as const, label: t.optPrintStoreName },
+                { key: 'printStoreAddress' as const, label: t.optPrintStoreAddress },
+                { key: 'printDateTime' as const, label: t.optPrintDateTime },
+                { key: 'printNotes' as const, label: t.optPrintNotes },
+                { key: 'printFooter' as const, label: t.optPrintFooter },
+              ].map(({ key, label }) => {
+                const isChecked = !!receiptOpts[key];
+                return (
+                  <label
+                    key={key}
+                    onClick={() => handleToggleReceiptOpt(key)}
+                    className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                      isChecked
+                        ? 'bg-emerald-50/50 border-emerald-300 text-slate-900'
+                        : 'bg-slate-50 border-slate-200 text-slate-500'
+                    }`}
+                  >
+                    <span className="text-xs font-bold">{label}</span>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => {}} // handled by parent onClick
+                      className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: 58mm Bluetooth Thermal Printer */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-3">
@@ -281,11 +357,11 @@ Printer berfungsi dengan baik!
               </div>
               {btDeviceName && (
                 <div className="text-xs text-slate-700 font-semibold mt-2">
-                  Perangkat: <span className="font-black text-slate-900">{btDeviceName}</span>
+                  {t.deviceLabel}: <span className="font-black text-slate-900">{btDeviceName}</span>
                 </div>
               )}
               <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                Mendukung printer thermal 57/58mm via Bluetooth ESC/POS (Putian POS, GOOJPRT, dll) & Browser Print.
+                {t.printerDescription}
               </p>
             </div>
           </div>
@@ -293,101 +369,108 @@ Printer berfungsi dengan baik!
           <div className="space-y-2">
             {isBtConnected ? (
               <button
+                type="button"
                 onClick={handleDisconnectBt}
-                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-all"
+                className="w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-all flex items-center justify-center"
               >
                 {t.disconnectPrinter}
               </button>
             ) : (
               <button
+                type="button"
                 onClick={handleConnectBt}
                 disabled={btLoading}
-                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm flex items-center justify-center gap-2 transition-all"
+                className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm flex items-center justify-center gap-2 transition-all"
               >
                 <Printer className="w-4 h-4" />
-                <span>{btLoading ? 'Mencari Perangkat...' : t.connectPrinter}</span>
+                <span>{btLoading ? t.searchingDevice : t.connectPrinter}</span>
               </button>
             )}
 
             <button
+              type="button"
               onClick={handleTestPrint}
-              className="w-full py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 transition-all"
+              className="w-full h-10 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 transition-all flex items-center justify-center"
             >
               {t.testPrint}
             </button>
           </div>
         </div>
 
-        {/* Card 3: Change Owner PIN */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-          <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-3">
-            <KeyRound className="w-5 h-5 text-emerald-600" />
-            {t.ownerPinSetting}
-          </h3>
+        {/* Card 4: Change Owner PIN */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-3">
+              <KeyRound className="w-5 h-5 text-emerald-600" />
+              {t.ownerPinSetting}
+            </h3>
 
-          <form onSubmit={handleUpdatePin} className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                PIN Lama (Default: 123456)
-              </label>
-              <input
-                type="password"
-                maxLength={6}
-                value={oldPin}
-                onChange={(e) => setOldPin(e.target.value)}
-                placeholder="6 digit PIN lama"
-                className="w-full py-2 px-3 rounded-xl border border-slate-300 font-black text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+            <form onSubmit={handleUpdatePin} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {t.oldPinLabel}
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={oldPin}
+                  onChange={(e) => setOldPin(e.target.value)}
+                  placeholder="123456"
+                  className="w-full h-11 px-3 rounded-xl border border-slate-300 font-black text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                PIN Baru (6 Digit)
-              </label>
-              <input
-                type="password"
-                maxLength={6}
-                value={newPin}
-                onChange={(e) => setNewPin(e.target.value)}
-                placeholder="6 digit PIN baru"
-                className="w-full py-2 px-3 rounded-xl border border-slate-300 font-black text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {t.newPinLabel}
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value)}
+                  placeholder="6 digit"
+                  className="w-full h-11 px-3 rounded-xl border border-slate-300 font-black text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
 
-            {pinMessage && (
-              <p
-                className={`text-xs font-bold ${
-                  pinMessage.error ? 'text-red-500' : 'text-emerald-700'
-                }`}
+              {pinMessage && (
+                <p
+                  className={`text-xs font-bold ${
+                    pinMessage.error ? 'text-red-500' : 'text-emerald-700'
+                  }`}
+                >
+                  {pinMessage.text}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full h-11 rounded-xl bg-slate-900 hover:bg-black font-extrabold text-white text-xs transition-all shadow-sm flex items-center justify-center"
               >
-                {pinMessage.text}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 font-bold text-white text-xs transition-all"
-            >
-              Ubah PIN Pemilik
-            </button>
-          </form>
+                {t.changePinBtn}
+              </button>
+            </form>
+          </div>
         </div>
 
-        {/* Card 4: Language & Cloud Sync */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+        {/* Card 5: Language Selection & Cloud Session */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between md:col-span-2">
           <div>
             <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-3">
               <Globe className="w-5 h-5 text-emerald-600" />
               {t.languageSetting}
             </h3>
 
-            <div className="grid grid-cols-2 gap-2 mb-5">
+            <div className="grid grid-cols-2 gap-3 mb-6 max-w-md">
               <button
                 type="button"
                 onClick={() => setLanguage('id')}
-                className={`py-2.5 rounded-xl text-xs font-black border transition-all ${
+                className={`h-11 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-2 ${
                   language === 'id'
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
                     : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                 }`}
               >
@@ -396,9 +479,9 @@ Printer berfungsi dengan baik!
               <button
                 type="button"
                 onClick={() => setLanguage('en')}
-                className={`py-2.5 rounded-xl text-xs font-black border transition-all ${
+                className={`h-11 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-2 ${
                   language === 'en'
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
                     : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                 }`}
               >
@@ -412,34 +495,35 @@ Printer berfungsi dengan baik!
             </h3>
 
             {isFirebaseConfigured && user ? (
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 space-y-2">
+              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-3 max-w-md">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-600 font-semibold">Tersambung:</span>
+                  <span className="text-xs text-slate-600 font-semibold">{t.firebaseConnected}:</span>
                   <span className="text-xs font-black text-emerald-800">{user.email}</span>
                 </div>
                 <button
+                  type="button"
                   onClick={logout}
-                  className="w-full py-2 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+                  className="w-full h-11 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>{t.logoutBtn}</span>
                 </button>
               </div>
             ) : isFirebaseConfigured ? (
-              <form onSubmit={handleLogin} className="space-y-2">
+              <form onSubmit={handleLogin} className="space-y-3 max-w-md">
                 <input
                   type="email"
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="Email"
-                  className="w-full py-2 px-3 rounded-xl border border-slate-300 text-xs font-semibold"
+                  placeholder={t.emailLabel}
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-xs font-semibold"
                 />
                 <input
                   type="password"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder="Password"
-                  className="w-full py-2 px-3 rounded-xl border border-slate-300 text-xs font-semibold"
+                  placeholder={t.passwordLabel}
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-xs font-semibold"
                 />
                 {authError && (
                   <p className="text-xs text-rose-600 font-bold">{authError}</p>
@@ -448,7 +532,7 @@ Printer berfungsi dengan baik!
                   <button
                     type="submit"
                     disabled={authLoading}
-                    className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                    className="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center"
                   >
                     {authLoading ? '...' : t.loginBtn}
                   </button>
@@ -456,21 +540,21 @@ Printer berfungsi dengan baik!
                     type="button"
                     onClick={handleRegister}
                     disabled={authLoading}
-                    className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300"
+                    className="flex-1 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 flex items-center justify-center"
                   >
                     {t.registerBtn}
                   </button>
                 </div>
               </form>
             ) : (
-              <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200">
-                <p className="text-xs text-amber-900 font-semibold mb-2">
+              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 max-w-md">
+                <p className="text-xs text-amber-900 font-semibold mb-3">
                   {t.firebaseNotConfigured}
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsFirebaseConfigModalOpen(true)}
-                  className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-sm transition-all"
+                  className="w-full h-11 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-sm transition-all flex items-center justify-center"
                 >
                   {t.firebaseConfigureBtn}
                 </button>
@@ -485,10 +569,10 @@ Printer berfungsi dengan baik!
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
             <h3 className="text-lg font-black text-slate-900 mb-1">
-              Konfigurasi Kunci Firebase
+              {t.firebaseConfigureBtn}
             </h3>
             <p className="text-xs text-slate-500 mb-4">
-              Masukkan konfigurasi proyek Firebase Anda untuk sinkronisasi cloud multi-device & login akun.
+              Masukkan konfigurasi proyek Firebase Anda untuk sinkronisasi cloud:
             </p>
 
             <form onSubmit={handleSaveFirebaseConfig} className="space-y-3">
@@ -502,7 +586,7 @@ Printer berfungsi dengan baik!
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="AIzaSy..."
-                  className="w-full py-2 px-3 rounded-xl border border-slate-300 text-xs font-mono"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-mono"
                 />
               </div>
 
@@ -515,8 +599,8 @@ Printer berfungsi dengan baik!
                   required
                   value={projectId}
                   onChange={(e) => setProjectId(e.target.value)}
-                  placeholder="kasire-pos-123"
-                  className="w-full py-2 px-3 rounded-xl border border-slate-300 text-xs font-mono"
+                  placeholder="kasire-pos"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-mono"
                 />
               </div>
 
@@ -528,8 +612,8 @@ Printer berfungsi dengan baik!
                   type="text"
                   value={authDomain}
                   onChange={(e) => setAuthDomain(e.target.value)}
-                  placeholder="kasire-pos-123.firebaseapp.com"
-                  className="w-full py-2 px-3 rounded-xl border border-slate-300 text-xs font-mono"
+                  placeholder="kasire-pos.firebaseapp.com"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-mono"
                 />
               </div>
 
@@ -542,7 +626,7 @@ Printer berfungsi dengan baik!
                   value={appId}
                   onChange={(e) => setAppId(e.target.value)}
                   placeholder="1:123456789:web:abcdef"
-                  className="w-full py-2 px-3 rounded-xl border border-slate-300 text-xs font-mono"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-mono"
                 />
               </div>
 
@@ -550,15 +634,15 @@ Printer berfungsi dengan baik!
                 <button
                   type="button"
                   onClick={() => setIsFirebaseConfigModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 font-bold text-slate-700 text-xs"
+                  className="flex-1 h-11 rounded-xl bg-slate-100 font-bold text-slate-700 text-xs"
                 >
-                  Batal
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-black text-white text-xs shadow-md"
+                  className="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-black text-white text-xs shadow-md"
                 >
-                  Simpan & Hubungkan
+                  {t.save}
                 </button>
               </div>
             </form>

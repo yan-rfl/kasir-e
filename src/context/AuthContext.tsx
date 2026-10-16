@@ -7,18 +7,23 @@ import {
   signOut,
   onAuthStateChanged,
   User as FirebaseUser,
+  setPersistence,
+  browserLocalPersistence,
+  indexedDBLocalPersistence,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { initFirebase, saveStoredFirebaseConfig, FirebaseClientConfig, getStoredFirebaseConfig } from '@/lib/firebase';
-import { UserProfile } from '@/types';
+import { initFirebase, saveStoredFirebaseConfig, FirebaseClientConfig } from '@/lib/firebase';
+import { UserProfile, ReceiptOptions } from '@/types';
 
 interface AuthContextType {
   user: FirebaseUser | null;
   profile: UserProfile;
+  isAuthenticated: boolean;
   isFirebaseConfigured: boolean;
   isLoading: boolean;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string) => Promise<void>;
+  loginDemo: () => void;
   logout: () => Promise<void>;
   updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
   updateOwnerPin: (newPin: string) => Promise<void>;
@@ -26,33 +31,58 @@ interface AuthContextType {
   reloadFirebase: (config?: FirebaseClientConfig | null) => void;
 }
 
+const DEFAULT_RECEIPT_OPTIONS: ReceiptOptions = {
+  printStoreName: true,
+  printStoreAddress: true,
+  printDateTime: true,
+  printNotes: true,
+  printFooter: true,
+};
+
 const DEFAULT_PROFILE: UserProfile = {
-  uid: 'local-owner',
-  email: 'owner@kasire.local',
+  uid: 'owner-local',
+  email: 'ryan.rafael2004@gmail.com',
   displayName: 'Pemilik Toko',
-  storeName: 'Rumah Makan Kasir-E',
+  storeName: 'Pondok Bakso 168 DOI',
   ownerPin: '123456',
-  receiptHeader: 'Jl. Merdeka No. 45 - Telp: 08123456789',
-  receiptFooter: 'Terima Kasih Atas Kunjungan Anda',
+  receiptHeader: 'Pondok Bakso 168 DOI - Spesial Bakso Sapi',
+  receiptFooter: 'Terima Kasih - Selamat Menikmati',
+  receiptOptions: DEFAULT_RECEIPT_OPTIONS,
   language: 'id',
 };
 
-const STORAGE_KEY_LOCAL_PROFILE = 'kasire_local_user_profile';
+const STORAGE_KEY_LOCAL_PROFILE = 'kasire_local_user_profile_v3';
+const STORAGE_KEY_LOCAL_AUTH = 'kasire_offline_auth_session_v3';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isFirebaseConfigured, setIsFirebaseConfigured] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Load profile from local storage as initial state
+  // Load saved profile & local auth session on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_LOCAL_PROFILE);
-      if (saved) {
-        setProfile((prev) => ({ ...prev, ...JSON.parse(saved) }));
+      const savedProfile = localStorage.getItem(STORAGE_KEY_LOCAL_PROFILE);
+      if (savedProfile) {
+        const parsed = JSON.parse(savedProfile);
+        setProfile((prev) => ({
+          ...prev,
+          ...parsed,
+          storeName: parsed.storeName || 'Pondok Bakso 168 DOI',
+          receiptOptions: {
+            ...DEFAULT_RECEIPT_OPTIONS,
+            ...(parsed.receiptOptions || {}),
+          },
+        }));
+      }
+
+      const savedAuth = localStorage.getItem(STORAGE_KEY_LOCAL_AUTH);
+      if (savedAuth === 'true') {
+        setIsAuthenticated(true);
       }
     } catch {
       // ignore
@@ -68,34 +98,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    try {
+      setPersistence(auth, indexedDBLocalPersistence).catch(() => {
+        setPersistence(auth, browserLocalPersistence).catch(console.warn);
+      });
+    } catch {
+      // ignore
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setUser(fbUser);
-      if (fbUser && db) {
-        try {
-          const userDocRef = doc(db, 'users', fbUser.uid);
-          const snap = await getDoc(userDocRef);
-          if (snap.exists()) {
-            const data = snap.data() as UserProfile;
-            setProfile(data);
-            localStorage.setItem(STORAGE_KEY_LOCAL_PROFILE, JSON.stringify(data));
-          } else {
-            // First time user profile initialization
-            const newProfile: UserProfile = {
-              uid: fbUser.uid,
-              email: fbUser.email,
-              displayName: fbUser.displayName || 'Pemilik Toko',
-              storeName: 'Rumah Makan Kasir-E',
-              ownerPin: '123456',
-              receiptHeader: 'Struk Resmi Pembelian',
-              receiptFooter: 'Terima Kasih - Datang Lagi Ya',
-              language: 'id',
-            };
-            await setDoc(userDocRef, newProfile);
-            setProfile(newProfile);
-            localStorage.setItem(STORAGE_KEY_LOCAL_PROFILE, JSON.stringify(newProfile));
+      if (fbUser) {
+        setIsAuthenticated(true);
+        localStorage.setItem(STORAGE_KEY_LOCAL_AUTH, 'true');
+
+        if (db) {
+          try {
+            // Single project config: settings/store_config
+            const settingsDocRef = doc(db, 'settings', 'store_config');
+            const snap = await getDoc(settingsDocRef);
+            if (snap.exists()) {
+              const data = snap.data() as UserProfile;
+              const merged = {
+                ...profile,
+                ...data,
+                receiptOptions: {
+                  ...DEFAULT_RECEIPT_OPTIONS,
+                  ...(data.receiptOptions || {}),
+                },
+              };
+              setProfile(merged);
+              localStorage.setItem(STORAGE_KEY_LOCAL_PROFILE, JSON.stringify(merged));
+            } else {
+              // Initialize single project store config
+              const newConfig: UserProfile = {
+                uid: fbUser.uid,
+                email: fbUser.email || 'ryan.rafael2004@gmail.com',
+                displayName: fbUser.displayName || 'Pemilik Toko',
+                storeName: 'Pondok Bakso 168 DOI',
+                ownerPin: '123456',
+                receiptHeader: 'Pondok Bakso 168 DOI - Spesial Bakso Sapi',
+                receiptFooter: 'Terima Kasih - Selamat Menikmati',
+                receiptOptions: DEFAULT_RECEIPT_OPTIONS,
+                language: 'id',
+              };
+              await setDoc(settingsDocRef, newConfig);
+              setProfile(newConfig);
+              localStorage.setItem(STORAGE_KEY_LOCAL_PROFILE, JSON.stringify(newConfig));
+            }
+          } catch (err) {
+            console.warn('Error fetching store config from Firestore:', err);
           }
-        } catch (err) {
-          console.warn('Error fetching user profile from Firestore:', err);
+        }
+      } else {
+        // If logged out from Firebase
+        const savedAuth = localStorage.getItem(STORAGE_KEY_LOCAL_AUTH);
+        if (savedAuth !== 'true') {
+          setIsAuthenticated(false);
         }
       }
       setIsLoading(false);
@@ -115,12 +174,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { auth } = initFirebase();
     if (!auth) throw new Error('Firebase Auth belum dikonfigurasi.');
     await signInWithEmailAndPassword(auth, email, pass);
+    setIsAuthenticated(true);
+    localStorage.setItem(STORAGE_KEY_LOCAL_AUTH, 'true');
   };
 
   const registerWithEmail = async (email: string, pass: string) => {
     const { auth } = initFirebase();
     if (!auth) throw new Error('Firebase Auth belum dikonfigurasi.');
     await createUserWithEmailAndPassword(auth, email, pass);
+    setIsAuthenticated(true);
+    localStorage.setItem(STORAGE_KEY_LOCAL_AUTH, 'true');
+  };
+
+  const loginDemo = () => {
+    setIsAuthenticated(true);
+    localStorage.setItem(STORAGE_KEY_LOCAL_AUTH, 'true');
   };
 
   const logout = async () => {
@@ -129,10 +197,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signOut(auth);
     }
     setUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem(STORAGE_KEY_LOCAL_AUTH);
   };
 
   const updateProfileData = async (data: Partial<UserProfile>) => {
-    const updated = { ...profile, ...data };
+    const updated = {
+      ...profile,
+      ...data,
+      receiptOptions: {
+        ...DEFAULT_RECEIPT_OPTIONS,
+        ...(profile.receiptOptions || {}),
+        ...(data.receiptOptions || {}),
+      },
+    };
     setProfile(updated);
     try {
       localStorage.setItem(STORAGE_KEY_LOCAL_PROFILE, JSON.stringify(updated));
@@ -140,11 +218,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // ignore
     }
 
-    if (user && isFirebaseConfigured) {
+    if (isFirebaseConfigured) {
       const { db } = initFirebase();
       if (db) {
-        const userDocRef = doc(db, 'users', user.uid);
-        await updateDoc(userDocRef, data);
+        const settingsDocRef = doc(db, 'settings', 'store_config');
+        await setDoc(settingsDocRef, updated, { merge: true });
       }
     }
   };
@@ -169,10 +247,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         profile,
+        isAuthenticated,
         isFirebaseConfigured,
         isLoading,
         loginWithEmail,
         registerWithEmail,
+        loginDemo,
         logout,
         updateProfileData,
         updateOwnerPin,

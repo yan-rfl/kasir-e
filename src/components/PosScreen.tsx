@@ -12,11 +12,10 @@ import {
   ShoppingCart,
   Trash2,
   Check,
-  CreditCard,
   Banknote,
   Receipt,
   X,
-  Sparkles,
+  Tag,
 } from 'lucide-react';
 
 export const PosScreen: React.FC = () => {
@@ -41,6 +40,50 @@ export const PosScreen: React.FC = () => {
   const [autoPrint, setAutoPrint] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  // Category theme styling helper (Requirement 9: Different colors for each type)
+  const getCategoryTheme = (category: string) => {
+    const cat = (category || '').toLowerCase();
+    if (cat === 'makanan' || cat === 'food') {
+      return {
+        cardBorder: 'border-amber-200 hover:border-amber-400',
+        cardBorderActive: 'border-amber-500 ring-2 ring-amber-100 bg-amber-50/25',
+        badge: 'bg-amber-100 text-amber-900 border border-amber-200/80',
+        activePill: 'bg-amber-600 text-white',
+        priceColor: 'text-amber-800',
+        stepperAdd: 'bg-amber-600 hover:bg-amber-700',
+      };
+    }
+    if (cat === 'minuman' || cat === 'drink' || cat === 'drinks') {
+      return {
+        cardBorder: 'border-sky-200 hover:border-sky-400',
+        cardBorderActive: 'border-sky-500 ring-2 ring-sky-100 bg-sky-50/25',
+        badge: 'bg-sky-100 text-sky-900 border border-sky-200/80',
+        activePill: 'bg-sky-600 text-white',
+        priceColor: 'text-sky-800',
+        stepperAdd: 'bg-sky-600 hover:bg-sky-700',
+      };
+    }
+    if (cat === 'cemilan' || cat === 'snack' || cat === 'snacks') {
+      return {
+        cardBorder: 'border-purple-200 hover:border-purple-400',
+        cardBorderActive: 'border-purple-500 ring-2 ring-purple-100 bg-purple-50/25',
+        badge: 'bg-purple-100 text-purple-900 border border-purple-200/80',
+        activePill: 'bg-purple-600 text-white',
+        priceColor: 'text-purple-800',
+        stepperAdd: 'bg-purple-600 hover:bg-purple-700',
+      };
+    }
+    // Custom / Other category
+    return {
+      cardBorder: 'border-emerald-200 hover:border-emerald-400',
+      cardBorderActive: 'border-emerald-500 ring-2 ring-emerald-100 bg-emerald-50/25',
+      badge: 'bg-emerald-100 text-emerald-900 border border-emerald-200/80',
+      activePill: 'bg-emerald-600 text-white',
+      priceColor: 'text-emerald-800',
+      stepperAdd: 'bg-emerald-600 hover:bg-emerald-700',
+    };
+  };
+
   // Filtered menu items
   const filteredItems = useMemo(() => {
     return menuItems.filter((item) => {
@@ -57,7 +100,7 @@ export const PosScreen: React.FC = () => {
 
   const handleOpenCheckout = () => {
     if (cartCount === 0) {
-      alert('Keranjang masih kosong! Silakan ketuk salah satu menu makanan atau minuman di atas terlebih dahulu.');
+      alert(t.emptyCartAlert);
       return;
     }
     setCashReceived(cartTotal.toString());
@@ -86,23 +129,26 @@ export const PosScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-64px)] pb-32">
+    <div className="flex flex-col min-h-[calc(100vh-64px)] pb-36">
       {/* Category Tabs & Search Bar */}
-      <div className="bg-white border-b border-slate-200 sticky top-14 z-20 shadow-sm p-3">
+      <div className="bg-white border-b border-slate-200 sticky top-14 md:top-14 z-20 shadow-sm p-3">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between">
-          {/* Category Tabs (Large touch pills) */}
+          {/* Category Tabs (Large touch pills with color coordination) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             <button
+              type="button"
               onClick={() => setSelectedCategory('all')}
-              className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+              className={`h-11 px-5 rounded-xl text-sm font-extrabold whitespace-nowrap transition-all shadow-sm ${
                 selectedCategory === 'all'
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                  ? 'bg-slate-900 text-white'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
               }`}
             >
               {t.categoryAll}
             </button>
             {categories.map((cat) => {
+              const theme = getCategoryTheme(cat);
+              const isSelected = selectedCategory.toLowerCase() === cat.toLowerCase();
               const label =
                 cat === 'makanan'
                   ? t.categoryFood
@@ -113,13 +159,15 @@ export const PosScreen: React.FC = () => {
                   : cat === 'lainnya'
                   ? t.categoryOther
                   : cat.charAt(0).toUpperCase() + cat.slice(1);
+
               return (
                 <button
                   key={cat}
+                  type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
-                    selectedCategory === cat
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                  className={`h-11 px-5 rounded-xl text-sm font-extrabold whitespace-nowrap transition-all shadow-sm ${
+                    isSelected
+                      ? `${theme.activePill} shadow-md scale-105`
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}
                 >
@@ -130,19 +178,20 @@ export const PosScreen: React.FC = () => {
           </div>
 
           {/* Search Bar */}
-          <div className="relative min-w-[220px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative min-w-[240px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t.searchMenu}
-              className="w-full pl-9 pr-8 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full h-11 pl-10 pr-9 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -154,13 +203,13 @@ export const PosScreen: React.FC = () => {
       {/* Main Catalog Grid */}
       <div className="max-w-7xl mx-auto px-4 py-5 w-full flex-1">
         {filteredItems.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm">
+          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-md mx-auto">
             <ShoppingCart className="w-16 h-16 text-slate-300 mx-auto mb-3" />
             <h3 className="text-lg font-bold text-slate-700">
-              Tidak ada menu yang sesuai
+              {t.emptyMenuFound}
             </h3>
             <p className="text-sm text-slate-500 mt-1">
-              Coba ganti kategori atau kata pencarian
+              {t.emptyMenuHint}
             </p>
           </div>
         ) : (
@@ -168,29 +217,38 @@ export const PosScreen: React.FC = () => {
             {filteredItems.map((item) => {
               const inCart = cart[item.id];
               const qty = inCart ? inCart.quantity : 0;
+              const theme = getCategoryTheme(item.category);
 
               return (
                 <div
                   key={item.id}
                   onClick={() => addToCart(item)}
-                  className={`bg-white rounded-2xl p-3.5 border-2 transition-all flex flex-col justify-between select-none shadow-sm cursor-pointer active:scale-[0.98] group ${
+                  className={`bg-white rounded-2xl p-4 border-2 transition-all flex flex-col justify-between select-none shadow-sm cursor-pointer active:scale-[0.98] group ${
                     qty > 0
-                      ? 'border-emerald-500 shadow-md ring-2 ring-emerald-100 bg-emerald-50/20'
-                      : 'border-slate-200 hover:border-emerald-400 hover:shadow'
+                      ? `${theme.cardBorderActive} shadow-md`
+                      : `${theme.cardBorder} hover:shadow-md`
                   }`}
                 >
                   <div>
-                    {/* Category Tag */}
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-600 uppercase tracking-wider">
+                    {/* Top Row: Category Tag & Distinct Spacious "xx di keranjang" Badge */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider ${theme.badge}`}
+                      >
                         {item.category || 'makanan'}
                       </span>
+
+                      {/* Requirement 4: Fixed spacious badge with ample padding and clean pill shape */}
                       {qty > 0 && (
-                        <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-bounce">
-                          {qty}x di keranjang
+                        <span className="inline-flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-black px-3 py-1 rounded-full whitespace-nowrap shadow-sm shrink-0 animate-fadeIn">
+                          <span>{qty}x</span>
+                          <span className="text-[11px] font-bold text-emerald-100 hidden sm:inline">
+                            {t.inCartBadge}
+                          </span>
                         </span>
                       )}
                     </div>
+
                     {/* Item Name */}
                     <h4 className="font-extrabold text-slate-900 text-base leading-snug line-clamp-2 min-h-[44px] group-hover:text-emerald-700 transition-colors">
                       {item.name}
@@ -199,11 +257,11 @@ export const PosScreen: React.FC = () => {
 
                   <div className="mt-3 pt-2.5 border-t border-slate-100">
                     {/* Price */}
-                    <div className="text-emerald-700 font-black text-lg mb-2.5">
+                    <div className={`font-black text-lg mb-2.5 ${theme.priceColor}`}>
                       Rp {formatRupiah(item.price)}
                     </div>
 
-                    {/* Stepper with Large Min-48px Touch Targets */}
+                    {/* Stepper with Large Consistent Min-44px Touch Targets */}
                     <div
                       onClick={(e) => e.stopPropagation()}
                       className="flex items-center justify-between gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200/80"
@@ -226,8 +284,8 @@ export const PosScreen: React.FC = () => {
                       </button>
 
                       <span
-                        className={`font-black text-lg px-2 min-w-[28px] text-center ${
-                          qty > 0 ? 'text-emerald-800 scale-110' : 'text-slate-400'
+                        className={`font-black text-lg px-2 min-w-[32px] text-center ${
+                          qty > 0 ? 'text-slate-900 scale-110' : 'text-slate-400'
                         }`}
                       >
                         {qty}
@@ -240,7 +298,7 @@ export const PosScreen: React.FC = () => {
                           addToCart(item);
                         }}
                         aria-label="Tambah satu"
-                        className="w-11 h-11 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white flex items-center justify-center font-black shadow-sm transition-all"
+                        className={`w-11 h-11 rounded-lg active:scale-95 text-white flex items-center justify-center font-black shadow-sm transition-all ${theme.stepperAdd}`}
                       >
                         <Plus className="w-5 h-5" />
                       </button>
@@ -259,11 +317,12 @@ export const PosScreen: React.FC = () => {
           {/* Left: Summary */}
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={clearCart}
               disabled={cartCount === 0}
-              className={`p-2.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition-all ${
+              className={`h-12 px-3.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition-all ${
                 cartCount > 0
-                  ? 'border-slate-300 text-rose-600 hover:bg-rose-50'
+                  ? 'border-slate-300 text-rose-600 hover:bg-rose-50 cursor-pointer'
                   : 'border-slate-200 text-slate-300 cursor-not-allowed'
               }`}
               title={t.clearCart}
@@ -282,11 +341,11 @@ export const PosScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: Checkout Button (Large Prominent Action) */}
+          {/* Right: Checkout Button (Large Prominent Action, Consistent Sizing) */}
           <button
             type="button"
             onClick={handleOpenCheckout}
-            className={`py-3.5 px-6 md:px-10 rounded-2xl font-black text-base md:text-lg flex items-center gap-2.5 shadow-lg transition-all active:scale-[0.98] ${
+            className={`h-13 py-3.5 px-6 md:px-10 rounded-2xl font-black text-base md:text-lg flex items-center gap-2.5 shadow-lg transition-all active:scale-[0.98] ${
               cartCount > 0
                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-emerald-200'
                 : 'bg-slate-200 text-slate-500 hover:bg-slate-300 cursor-pointer'
@@ -309,6 +368,7 @@ export const PosScreen: React.FC = () => {
                 <h3 className="text-xl font-black">{t.checkoutTitle}</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setIsCheckoutModalOpen(false)}
                 className="w-9 h-9 rounded-full bg-emerald-700/60 hover:bg-emerald-700 text-white flex items-center justify-center transition-all"
               >
@@ -332,7 +392,7 @@ export const PosScreen: React.FC = () => {
                       <span className="text-slate-800">
                         {item.name} <span className="text-slate-400">x{item.quantity}</span>
                       </span>
-                      <span className="text-slate-900">
+                      <span className="text-slate-900 font-bold">
                         Rp {formatRupiah(item.price * item.quantity)}
                       </span>
                     </div>
@@ -353,18 +413,19 @@ export const PosScreen: React.FC = () => {
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
                   value={cashReceived}
                   onChange={(e) => setCashReceived(e.target.value)}
-                  className="w-full py-3 px-4 rounded-xl border-2 border-slate-300 text-2xl font-black text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                  className="w-full h-14 px-4 rounded-xl border-2 border-slate-300 text-2xl font-black text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                   placeholder="0"
                 />
 
-                {/* Quick Cash Shortcuts */}
-                <div className="grid grid-cols-4 gap-2 mt-2">
+                {/* Quick Cash Shortcuts (Consistent Heights) */}
+                <div className="grid grid-cols-4 gap-2 mt-2.5">
                   <button
                     type="button"
                     onClick={() => handleCashShortcut(cartTotal)}
-                    className="py-2 px-1 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-xs font-extrabold text-slate-700 border border-slate-200 transition-all text-center"
+                    className="h-11 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-xs font-extrabold text-slate-700 border border-slate-200 transition-all text-center flex items-center justify-center"
                   >
                     {t.exactAmount}
                   </button>
@@ -373,7 +434,7 @@ export const PosScreen: React.FC = () => {
                       key={val}
                       type="button"
                       onClick={() => handleCashShortcut(val)}
-                      className="py-2 px-1 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-xs font-extrabold text-slate-700 border border-slate-200 transition-all text-center"
+                      className="h-11 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-xs font-extrabold text-slate-700 border border-slate-200 transition-all text-center flex items-center justify-center"
                     >
                       {formatRupiah(val)}
                     </button>
@@ -400,8 +461,8 @@ export const PosScreen: React.FC = () => {
                   type="text"
                   value={customerNote}
                   onChange={(e) => setCustomerNote(e.target.value)}
-                  placeholder="Contoh: Meja 4 / Bungkus"
-                  className="w-full py-2.5 px-3.5 rounded-xl border border-slate-300 text-sm font-medium focus:outline-none focus:border-emerald-500"
+                  placeholder={t.notePlaceholder}
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-sm font-medium focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -420,12 +481,12 @@ export const PosScreen: React.FC = () => {
               </label>
             </div>
 
-            {/* Modal Footer */}
+            {/* Modal Footer (Consistent Sizing) */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex gap-3">
               <button
                 type="button"
                 onClick={() => setIsCheckoutModalOpen(false)}
-                className="flex-1 py-3.5 rounded-xl bg-white border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 transition-all text-sm"
+                className="flex-1 h-12 rounded-xl bg-white border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 transition-all text-sm"
               >
                 {t.cancel}
               </button>
@@ -433,10 +494,10 @@ export const PosScreen: React.FC = () => {
                 type="button"
                 onClick={handleConfirmCheckout}
                 disabled={isSubmitting || cashReceivedNum < cartTotal}
-                className={`flex-1 py-3.5 rounded-xl font-black text-base flex items-center justify-center gap-2 text-white shadow-md transition-all ${
+                className={`flex-1 h-12 rounded-xl font-black text-base flex items-center justify-center gap-2 text-white shadow-md transition-all ${
                   isSubmitting || cashReceivedNum < cartTotal
                     ? 'bg-slate-300 cursor-not-allowed'
-                    : 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'
                 }`}
               >
                 <Check className="w-5 h-5" />

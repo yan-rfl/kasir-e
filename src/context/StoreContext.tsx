@@ -171,8 +171,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { db } = initFirebase();
       if (db) {
         setIsLoading(true);
-        // Menu Items snapshot
-        const menuCol = collection(db, 'users', user.uid, 'menu');
+        // Menu Items snapshot from single root collection
+        const menuCol = collection(db, 'menu');
         const qMenu = query(menuCol, orderBy('orderIndex', 'asc'));
         unsubMenu = onSnapshot(qMenu, (snap) => {
           if (!snap.empty) {
@@ -181,18 +181,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           } else {
             // Seed initial menu items to firestore
             const batch = writeBatch(db);
-            const seeded = SEED_MENU_ITEMS.map((item) => ({ ...item, userId: user.uid }));
-            seeded.forEach((item) => {
-              const ref = doc(db, 'users', user.uid, 'menu', item.id);
+            SEED_MENU_ITEMS.forEach((item) => {
+              const ref = doc(db, 'menu', item.id);
               batch.set(ref, item);
             });
             batch.commit().catch(console.error);
-            setMenuItems(seeded);
+            setMenuItems(SEED_MENU_ITEMS as MenuItem[]);
           }
         });
 
-        // Transactions snapshot
-        const txCol = collection(db, 'users', user.uid, 'transactions');
+        // Transactions snapshot from single root collection
+        const txCol = collection(db, 'transactions');
         const qTx = query(txCol, orderBy('timestamp', 'desc'));
         unsubTx = onSnapshot(qTx, (snap) => {
           const list = snap.docs.map((d) => d.data() as Transaction);
@@ -404,7 +403,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (isFirebaseConfigured && user) {
       const { db } = initFirebase();
       if (db) {
-        const txDoc = doc(db, 'users', user.uid, 'transactions', formattedId);
+        const txDoc = doc(db, 'transactions', formattedId);
         await setDoc(txDoc, newTx);
       }
     } else {
@@ -417,12 +416,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTxCounter((prev) => prev + 1);
     clearCart();
 
-    // Generate print text and raw ESC/POS bytes
+    // Generate print text and raw ESC/POS bytes with receipt options
     const receiptText = generateSingleReceiptText(
       newTx,
       profile.storeName,
       profile.receiptHeader,
-      profile.receiptFooter
+      profile.receiptFooter,
+      profile.receiptOptions
     );
     const rawBytes = textToEscPosBytes(receiptText);
 
@@ -450,7 +450,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (db) {
         const batch = writeBatch(db);
         for (const t of transactions) {
-          const ref = doc(db, 'users', user.uid, 'transactions', t.id);
+          const ref = doc(db, 'transactions', t.id);
           batch.delete(ref);
         }
         await batch.commit();
@@ -466,13 +466,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Menu CRUD
   const addMenuItem = async (
-    itemData: Omit<MenuItem, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'orderIndex'>
+    itemData: Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt' | 'orderIndex'>
   ) => {
     const newId = `m-${Date.now()}`;
     const newItem: MenuItem = {
       ...itemData,
       id: newId,
-      userId: currentUserId,
       orderIndex: menuItems.length,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -484,7 +483,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (isFirebaseConfigured && user) {
       const { db } = initFirebase();
       if (db) {
-        const ref = doc(db, 'users', user.uid, 'menu', newId);
+        const ref = doc(db, 'menu', newId);
         await setDoc(ref, newItem);
       }
     } else {
@@ -501,7 +500,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (isFirebaseConfigured && user) {
       const { db } = initFirebase();
       if (db) {
-        const ref = doc(db, 'users', user.uid, 'menu', id);
+        const ref = doc(db, 'menu', id);
         await setDoc(ref, { ...updates, updatedAt: Date.now() }, { merge: true });
       }
     } else {
@@ -516,7 +515,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (isFirebaseConfigured && user) {
       const { db } = initFirebase();
       if (db) {
-        const ref = doc(db, 'users', user.uid, 'menu', id);
+        const ref = doc(db, 'menu', id);
         await deleteDoc(ref);
       }
     } else {
@@ -545,7 +544,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (db) {
         const batch = writeBatch(db);
         updated.forEach((item) => {
-          const ref = doc(db, 'users', user.uid, 'menu', item.id);
+          const ref = doc(db, 'menu', item.id);
           batch.update(ref, { orderIndex: item.orderIndex });
         });
         await batch.commit();
@@ -561,7 +560,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       tx,
       profile.storeName,
       profile.receiptHeader,
-      profile.receiptFooter
+      profile.receiptFooter,
+      profile.receiptOptions
     );
     const bytes = textToEscPosBytes(text);
     await dispatchPrintJob({

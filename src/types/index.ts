@@ -2,7 +2,6 @@ export type MenuCategory = 'all' | 'makanan' | 'minuman' | 'cemilan' | 'lainnya'
 
 export interface MenuItem {
   id: string;
-  userId: string;
   name: string;
   price: number;
   category: string;
@@ -10,6 +9,7 @@ export interface MenuItem {
   available: boolean;
   createdAt: number;
   updatedAt: number;
+  userId?: string;
 }
 
 export interface OrderItem {
@@ -23,13 +23,21 @@ export interface OrderItem {
 export interface Transaction {
   id: string; // Formatted e.g. "#00001"
   counter: number; // 1, 2, 3...
-  userId: string;
   timestamp: number; // Unix timestamp in ms
   items: OrderItem[];
   totalPrice: number;
   paidAmount?: number;
   changeAmount?: number;
   note?: string;
+  userId?: string;
+}
+
+export interface ReceiptOptions {
+  printStoreName: boolean;
+  printStoreAddress: boolean;
+  printDateTime: boolean;
+  printNotes: boolean;
+  printFooter: boolean;
 }
 
 export interface UserProfile {
@@ -40,6 +48,7 @@ export interface UserProfile {
   ownerPin: string; // Default: "123456"
   receiptHeader?: string;
   receiptFooter?: string;
+  receiptOptions?: ReceiptOptions;
   language: 'id' | 'en';
 }
 

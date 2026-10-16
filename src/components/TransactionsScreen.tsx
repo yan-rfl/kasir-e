@@ -205,15 +205,16 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
             {t.txTitle}
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Total {filteredTransactions.length} transaksi tercatat
+            {filteredTransactions.length} {t.txSubtitle}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Filter & Sort Button */}
           <button
+            type="button"
             onClick={() => setIsFilterModalOpen(true)}
-            className="py-2.5 px-4 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-extrabold text-sm flex items-center gap-2 shadow-sm transition-all"
+            className="h-10 px-4 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-extrabold text-sm flex items-center gap-2 shadow-sm transition-all"
           >
             <Filter className="w-4 h-4 text-emerald-600" />
             <span>{t.sortFilterBtn}</span>
@@ -224,8 +225,9 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
 
           {/* Reset Transactions (PIN Protected) */}
           <button
+            type="button"
             onClick={onOpenResetPinModal}
-            className="py-2.5 px-3.5 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center gap-1.5 transition-all"
+            className="h-10 px-3.5 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
             title={t.resetTransactions}
           >
             <Trash2 className="w-4 h-4" />
@@ -238,6 +240,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
       <div className="bg-white rounded-2xl p-3.5 border-2 border-emerald-500/80 shadow-md mb-5 flex flex-wrap items-center justify-between gap-3">
         {/* Select All Checkbox */}
         <button
+          type="button"
           onClick={handleSelectAll}
           className="flex items-center gap-2 font-black text-sm text-slate-800 hover:text-emerald-700 transition-all select-none"
         >
@@ -252,7 +255,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
               : t.selectAll}
           </span>
           {selectedTxIds.size > 0 && (
-            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-black">
+            <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-black">
               {selectedTxIds.size} {t.selectedCount}
             </span>
           )}
@@ -262,9 +265,10 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {/* Print Kawul (Bakso items only) */}
           <button
+            type="button"
             onClick={handlePrintKawul}
             disabled={selectedTxIds.size === 0}
-            className={`flex-1 sm:flex-initial py-2.5 px-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all ${
+            className={`flex-1 sm:flex-initial h-11 px-4 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all ${
               selectedTxIds.size > 0
                 ? 'bg-amber-600 hover:bg-amber-700 text-white active:scale-95'
                 : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
@@ -276,9 +280,10 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
 
           {/* Print Mamah (Full Summary) */}
           <button
+            type="button"
             onClick={handlePrintMamah}
             disabled={selectedTxIds.size === 0}
-            className={`flex-1 sm:flex-initial py-2.5 px-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all ${
+            className={`flex-1 sm:flex-initial h-11 px-4 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all ${
               selectedTxIds.size > 0
                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
                 : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
@@ -292,11 +297,11 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
 
       {/* Transactions List Grouped by Date */}
       {Object.keys(groupedTransactions).length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm">
+        <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-md mx-auto">
           <Receipt className="w-16 h-16 text-slate-300 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-slate-700">{t.noTransactions}</h3>
           <p className="text-xs text-slate-500 mt-1">
-            Transaksi yang diselesaikan di kasir akan muncul di sini
+            {t.noTransactionsHint}
           </p>
         </div>
       ) : (
@@ -316,6 +321,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                   <div className="flex items-center gap-3">
                     {/* Checkbox for full date group */}
                     <button
+                      type="button"
                       onClick={() => handleToggleGroup(group.list)}
                       className="text-slate-500 hover:text-emerald-700"
                     >
@@ -327,6 +333,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => toggleDateGroup(dateKey)}
                       className="flex items-center gap-2 text-left"
                     >
@@ -335,7 +342,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                         {group.label}
                       </span>
                       <span className="text-xs text-slate-500 font-semibold">
-                        ({group.list.length} struk)
+                        ({group.list.length} {t.receiptsCount})
                       </span>
                     </button>
                   </div>

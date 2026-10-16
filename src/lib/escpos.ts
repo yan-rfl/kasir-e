@@ -1,4 +1,4 @@
-import { OrderItem, Transaction } from "@/types";
+import { OrderItem, Transaction, ReceiptOptions } from "@/types";
 
 export const LINE_WIDTH = 32;
 
@@ -44,28 +44,44 @@ export function separator(char: string = '-', width: number = LINE_WIDTH): strin
  */
 export function generateSingleReceiptText(
   tx: Transaction,
-  storeName: string = 'KASIR-E',
+  storeName: string = 'Pondok Bakso 168 DOI',
   header?: string,
-  footer?: string
+  footer?: string,
+  options?: ReceiptOptions
 ): string {
   const lines: string[] = [];
+  const opts: ReceiptOptions = {
+    printStoreName: options?.printStoreName ?? true,
+    printStoreAddress: options?.printStoreAddress ?? true,
+    printDateTime: options?.printDateTime ?? true,
+    printNotes: options?.printNotes ?? true,
+    printFooter: options?.printFooter ?? true,
+  };
 
   // Header
-  lines.push(padCenter(storeName));
-  if (header) {
+  if (opts.printStoreName) {
+    lines.push(padCenter(storeName));
+  }
+  if (opts.printStoreAddress && header) {
     lines.push(padCenter(header));
   }
-  lines.push(separator('='));
+  if (opts.printStoreName || (opts.printStoreAddress && header)) {
+    lines.push(separator('='));
+  }
 
   // Info
-  const dateStr = new Date(tx.timestamp).toLocaleString('id-ID', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  lines.push(padLeftRight(`No: ${tx.id}`, dateStr));
+  if (opts.printDateTime) {
+    const dateStr = new Date(tx.timestamp).toLocaleString('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    lines.push(padLeftRight(`No: ${tx.id}`, dateStr));
+  } else {
+    lines.push(`No: ${tx.id}`);
+  }
   lines.push(separator('-'));
 
   // Items
@@ -85,14 +101,16 @@ export function generateSingleReceiptText(
     lines.push(padLeftRight('KEMBALI', `Rp ${formatRupiah(tx.changeAmount || 0)}`));
   }
 
-  if (tx.note) {
+  if (opts.printNotes && tx.note) {
     lines.push(separator('-'));
     lines.push(`Ket: ${tx.note}`);
   }
 
-  lines.push(separator('='));
-  lines.push(padCenter(footer || 'Terima Kasih Atas Kunjungan Anda'));
-  lines.push(padCenter('Selamat Menikmati'));
+  if (opts.printFooter) {
+    lines.push(separator('='));
+    lines.push(padCenter(footer || 'Terima Kasih Atas Kunjungan Anda'));
+    lines.push(padCenter('Selamat Menikmati'));
+  }
   lines.push('');
 
   return lines.join('\n');
