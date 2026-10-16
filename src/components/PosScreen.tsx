@@ -35,7 +35,6 @@ export const PosScreen: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState<boolean>(false);
-  const [cashReceived, setCashReceived] = useState<string>('');
   const [customerNote, setCustomerNote] = useState<string>('');
   const [autoPrint, setAutoPrint] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -103,23 +102,15 @@ export const PosScreen: React.FC = () => {
       alert(t.emptyCartAlert);
       return;
     }
-    setCashReceived(cartTotal.toString());
     setCustomerNote('');
     setIsCheckoutModalOpen(true);
   };
-
-  const handleCashShortcut = (amount: number) => {
-    setCashReceived(amount.toString());
-  };
-
-  const cashReceivedNum = parseInt(cashReceived, 10) || 0;
-  const changeAmount = Math.max(0, cashReceivedNum - cartTotal);
 
   const handleConfirmCheckout = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await checkout(cashReceivedNum, customerNote.trim() || undefined, autoPrint);
+      await checkout(customerNote.trim() || undefined, autoPrint);
       setIsCheckoutModalOpen(false);
     } catch (err: any) {
       alert(err.message || 'Gagal menyelesaikan transaksi');
@@ -202,8 +193,18 @@ export const PosScreen: React.FC = () => {
 
       {/* Main Catalog Grid */}
       <div className="max-w-7xl mx-auto px-4 py-5 w-full flex-1">
-        {filteredItems.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-md mx-auto">
+        {menuItems.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-md mx-auto p-6">
+            <ShoppingCart className="w-16 h-16 text-slate-300 mx-auto mb-3" />
+            <h3 className="text-lg font-black text-slate-800">
+              Belum Ada Menu
+            </h3>
+            <p className="text-xs text-slate-500 mt-1 mb-2 leading-relaxed">
+              Katalog menu toko Anda masih kosong. Silakan masuk ke tab <b>Menu</b> untuk menambahkan menu makanan atau minuman Anda.
+            </p>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-md mx-auto p-6">
             <ShoppingCart className="w-16 h-16 text-slate-300 mx-auto mb-3" />
             <h3 className="text-lg font-bold text-slate-700">
               {t.emptyMenuFound}
@@ -406,51 +407,7 @@ export const PosScreen: React.FC = () => {
                 </div>
               </div>
 
-              {/* Cash Input */}
-              <div>
-                <label className="block text-sm font-extrabold text-slate-800 mb-1.5">
-                  {t.cashReceived} (Rp)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={cashReceived}
-                  onChange={(e) => setCashReceived(e.target.value)}
-                  className="w-full h-14 px-4 rounded-xl border-2 border-slate-300 text-2xl font-black text-slate-900 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                  placeholder="0"
-                />
 
-                {/* Quick Cash Shortcuts (Consistent Heights) */}
-                <div className="grid grid-cols-4 gap-2 mt-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleCashShortcut(cartTotal)}
-                    className="h-11 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-xs font-extrabold text-slate-700 border border-slate-200 transition-all text-center flex items-center justify-center"
-                  >
-                    {t.exactAmount}
-                  </button>
-                  {[20000, 50000, 100000].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => handleCashShortcut(val)}
-                      className="h-11 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-xs font-extrabold text-slate-700 border border-slate-200 transition-all text-center flex items-center justify-center"
-                    >
-                      {formatRupiah(val)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Change Calculation (Large & Highly Visible) */}
-              <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 flex justify-between items-center">
-                <span className="font-extrabold text-emerald-900 text-base">
-                  {t.changeAmount}
-                </span>
-                <span className="text-2xl font-black text-emerald-700">
-                  Rp {formatRupiah(changeAmount)}
-                </span>
-              </div>
 
               {/* Customer Note (Optional) */}
               <div>

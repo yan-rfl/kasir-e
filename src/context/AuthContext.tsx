@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { initFirebase, saveStoredFirebaseConfig, FirebaseClientConfig } from '@/lib/firebase';
-import { UserProfile, ReceiptOptions } from '@/types';
+import { UserProfile, ReceiptOptions, PrintPreset } from '@/types';
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -39,6 +39,27 @@ const DEFAULT_RECEIPT_OPTIONS: ReceiptOptions = {
   printFooter: true,
 };
 
+export const DEFAULT_PRINT_PRESETS: PrintPreset[] = [
+  {
+    id: 'preset-kawul',
+    name: 'Rekap Kawul (Bakso)',
+    filterKeywords: ['bakso'],
+    category: 'all',
+    showItemQty: true,
+    showItemPrice: true,
+    showTotalPrice: true,
+  },
+  {
+    id: 'preset-mamah',
+    name: 'Rekap Total (Semua Menu)',
+    filterKeywords: [],
+    category: 'all',
+    showItemQty: true,
+    showItemPrice: true,
+    showTotalPrice: true,
+  },
+];
+
 export const getDefaultStoreNameForUser = (email?: string | null): string => {
   if (email && email.toLowerCase().trim() === 'ryan.rafael2004@gmail.com') {
     return 'Pondok Bakso 168 by DOI';
@@ -60,6 +81,7 @@ const DEFAULT_PROFILE: UserProfile = {
   receiptHeader: 'Kasir-E POS - Struk Penjualan',
   receiptFooter: 'Terima Kasih Atas Kunjungan Anda',
   receiptOptions: DEFAULT_RECEIPT_OPTIONS,
+  printPresets: DEFAULT_PRINT_PRESETS,
   language: 'id',
 };
 
@@ -139,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   ...DEFAULT_RECEIPT_OPTIONS,
                   ...(data.receiptOptions || {}),
                 },
+                printPresets: data.printPresets || DEFAULT_PRINT_PRESETS,
               };
               setProfile(merged);
               localStorage.setItem(STORAGE_KEY_LOCAL_PROFILE, JSON.stringify(merged));
@@ -154,6 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 receiptHeader: `${defaultStoreName} - Struk Resmi Pembelian`,
                 receiptFooter: 'Terima Kasih Atas Kunjungan Anda',
                 receiptOptions: DEFAULT_RECEIPT_OPTIONS,
+                printPresets: DEFAULT_PRINT_PRESETS,
                 language: 'id',
               };
               await setDoc(userDocRef, newConfig);
@@ -209,6 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         receiptHeader: `${storeName} - Struk Resmi Pembelian`,
         receiptFooter: 'Terima Kasih Atas Kunjungan Anda',
         receiptOptions: DEFAULT_RECEIPT_OPTIONS,
+        printPresets: DEFAULT_PRINT_PRESETS,
         language: 'id',
       };
       await setDoc(doc(db, 'users', cred.user.uid), newConfig);

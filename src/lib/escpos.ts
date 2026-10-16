@@ -1,4 +1,4 @@
-import { OrderItem, Transaction, ReceiptOptions } from "@/types";
+import { OrderItem, Transaction, ReceiptOptions, PrintPreset } from "@/types";
 
 export const LINE_WIDTH = 32;
 
@@ -233,6 +233,83 @@ export function generateMamahReceiptText(
   lines.push(padLeftRight(`GRAND TOTAL (${totalQty})`, `Rp ${formatRupiah(grandTotal)}`));
   lines.push(separator('='));
   lines.push(padCenter('Rekap Harian Sukses'));
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+/**
+ * Generate configurable aggregated summary receipt based on user-defined PrintPreset
+ */
+export function generatePresetSummaryReceiptText(
+  transactions: Transaction[],
+  preset: PrintPreset,
+  storeName: string = 'KASIR-E'
+): string {
+  const lines: string[] = [];
+  lines.push(padCenter(storeName));
+  lines.push(padCenter(`*** ${preset.name.toUpperCase()} ***`));
+  lines.push(separator('='));
+
+  const dateStr = new Date().toLocaleDateString('id-ID', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  lines.push(padLeftRight('Tanggal:', dateStr));
+  lines.push(padLeftRight('Total Transaksi:', `${transactions.length} struk`));
+  lines.push(separator('-'));
+
+  const keywords = (preset.filterKeywords || []).map((k) => k.toLowerCase().trim()).filter(Boolean);
+  const targetCategory = (preset.category || 'all').toLowerCase();
+
+  const itemMap = new Map<string, { name: string; quantity: number; subtotal: number }>();
+  let grandTotal = 0;
+  let totalItemsCount = 0;
+
+  for (const tx of transactions) {
+    for (const item of tx.items) {
+      // Filter category if specified
+      if (targetCategory !== 'all' && (item.category || '').toLowerCase() !== targetCategory) {
+        continue;
+      }
+      // Filter keyword if specified
+      if (keywords.length > 0) {
+        const matchesKeyword = keywords.some((kw) => item.name.toLowerCase().includes(kw));
+        if (!matchesKeyword) continue;
+      }
+
+      const key = item.name.trim();
+      const existing = itemMap.get(key) || { name: key, quantity: 0, subtotal: 0 };
+      existing.quantity += item.quantity;
+      existing.subtotal += item.price * item.quantity;
+      itemMap.set(key, existing);
+
+      grandTotal += item.price * item.quantity;
+      totalItemsCount += item.quantity;
+    }
+  }
+
+  if (itemMap.size === 0) {
+    lines.push(padCenter('(Tidak ada menu yang sesuai filter)'));
+  } else {
+    for (const item of Array.from(itemMap.values())) {
+      lines.push(item.name);
+      const qtyPart = preset.showItemQty ? ` ${item.quantity}x` : '';
+      const subtotalPart = preset.showItemPrice ? formatRupiah(item.subtotal) : '';
+      if (qtyPart || subtotalPart) {
+        lines.push(padLeftRight(qtyPart, subtotalPart));
+      }
+    }
+  }
+
+  if (preset.showTotalPrice) {
+    lines.push(separator('-'));
+    lines.push(padLeftRight(`TOTAL (${totalItemsCount} item)`, `Rp ${formatRupiah(grandTotal)}`));
+  }
+  lines.push(separator('='));
+  lines.push(padCenter('Rekap Selesai'));
   lines.push('');
 
   return lines.join('\n');

@@ -40,6 +40,16 @@ export interface ReceiptOptions {
   printFooter: boolean;
 }
 
+export interface PrintPreset {
+  id: string;
+  name: string; // e.g., "Rekap Kawul (Bakso)", "Rekap Total (Semua Menu)"
+  filterKeywords?: string[]; // e.g. ["bakso"] or empty for all items
+  category?: string; // "all" | "makanan" | "minuman" | etc.
+  showItemQty: boolean; // default true
+  showItemPrice: boolean; // default true
+  showTotalPrice: boolean; // default true
+}
+
 export interface UserProfile {
   uid: string;
   email: string | null;
@@ -49,6 +59,7 @@ export interface UserProfile {
   receiptHeader?: string;
   receiptFooter?: string;
   receiptOptions?: ReceiptOptions;
+  printPresets?: PrintPreset[];
   language: 'id' | 'en';
 }
 
@@ -56,6 +67,7 @@ export interface PrintJob {
   title: string;
   content: string; // Preformatted 32-character monospace text
   rawBytes?: Uint8Array;
-  type: 'receipt' | 'kawul' | 'mamah';
+  type: 'receipt' | 'kawul' | 'mamah' | 'preset';
   createdAt: number;
 }
+

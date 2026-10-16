@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { MenuItem, OrderItem, Transaction, PrintJob } from '@/types';
+import { MenuItem, OrderItem, Transaction, PrintJob, PrintPreset } from '@/types';
 import { useAuth } from './AuthContext';
 import { initFirebase } from '@/lib/firebase';
 import {
@@ -18,6 +18,7 @@ import {
   generateSingleReceiptText,
   generateKawulReceiptText,
   generateMamahReceiptText,
+  generatePresetSummaryReceiptText,
   textToEscPosBytes,
 } from '@/lib/escpos';
 import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
@@ -40,7 +41,7 @@ interface StoreContextType {
   clearCart: () => void;
   
   // Checkout & Transactions
-  checkout: (paidAmount?: number, note?: string, autoPrint?: boolean) => Promise<Transaction>;
+  checkout: (note?: string, autoPrint?: boolean) => Promise<Transaction>;
   resetAllTransactions: () => Promise<void>;
   
   // Menu Actions
@@ -51,6 +52,7 @@ interface StoreContextType {
 
   // Printing Actions
   printSingleTransaction: (tx: Transaction) => Promise<void>;
+  printPresetSummaryReport: (selectedTxs: Transaction[], preset: PrintPreset) => Promise<void>;
   printKawulReport: (selectedTxs: Transaction[]) => Promise<void>;
   printMamahReport: (selectedTxs: Transaction[]) => Promise<void>;
   reprintLastJob: () => Promise<void>;
@@ -150,9 +152,7 @@ const SEED_MENU_ITEMS: Omit<MenuItem, 'userId'>[] = [
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, isFirebaseConfigured } = useAuth();
 
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(() =>
-    SEED_MENU_ITEMS.map((item) => ({ ...item, userId: 'local-owner' }))
-  );
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txCounter, setTxCounter] = useState<number>(1);
   const [cart, setCart] = useState<{ [id: string]: OrderItem }>({});
@@ -179,14 +179,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const items = snap.docs.map((d) => d.data() as MenuItem);
             setMenuItems(items);
           } else {
-            // Seed initial menu items for this user's shop
-            const batch = writeBatch(db);
-            SEED_MENU_ITEMS.forEach((item) => {
-              const ref = doc(db, 'users', user.uid, 'menu', item.id);
-              batch.set(ref, { ...item, userId: user.uid });
-            });
-            batch.commit().catch(console.error);
-            setMenuItems(SEED_MENU_ITEMS as MenuItem[]);
+            // New user has no menus initially
+            setMenuItems([]);
           }
         });
 
@@ -212,9 +206,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (savedMenu) {
           setMenuItems(JSON.parse(savedMenu));
         } else {
-          const seeded = SEED_MENU_ITEMS.map((item) => ({ ...item, userId: 'local-owner' }));
-          setMenuItems(seeded);
-          localStorage.setItem(STORAGE_KEY_MENU, JSON.stringify(seeded));
+          setMenuItems([]);
         }
 
         const savedTx = localStorage.getItem(STORAGE_KEY_TX);
@@ -372,7 +364,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Checkout Action
   const checkout = async (
-    paidAmount?: number,
     note?: string,
     autoPrint: boolean = true
   ): Promise<Transaction> => {
@@ -384,8 +375,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const currentCounter = txCounter;
     // Format 5-digit zero padded (e.g. #00001)
     const formattedId = `#${currentCounter.toString().padStart(5, '0')}`;
-    const paid = paidAmount !== undefined ? paidAmount : cartTotal;
-    const change = Math.max(0, paid - cartTotal);
 
     const newTx: Transaction = {
       id: formattedId,
@@ -394,9 +383,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       timestamp: Date.now(),
       items,
       totalPrice: cartTotal,
-      paidAmount: paid,
-      changeAmount: change,
-      note,
+      ...(note && note.trim() ? { note: note.trim() } : {}),
     };
 
     // Save to Firestore or LocalStorage
@@ -574,6 +561,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
+  const printPresetSummaryReport = async (selectedTxs: Transaction[], preset: PrintPreset) => {
+    const text = generatePresetSummaryReceiptText(selectedTxs, preset, profile.storeName);
+    const bytes = textToEscPosBytes(text);
+    await dispatchPrintJob({
+      title: preset.name,
+      content: text,
+      rawBytes: bytes,
+      type: 'preset',
+      createdAt: Date.now(),
+    });
+  };
+
   const printKawulReport = async (selectedTxs: Transaction[]) => {
     const text = generateKawulReceiptText(selectedTxs, profile.storeName);
     const bytes = textToEscPosBytes(text);
@@ -621,6 +620,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteMenuItem,
         moveMenuItem,
         printSingleTransaction,
+        printPresetSummaryReport,
         printKawulReport,
         printMamahReport,
         reprintLastJob,

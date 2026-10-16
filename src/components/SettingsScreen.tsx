@@ -7,7 +7,7 @@ import { useStore } from '@/context/StoreContext';
 import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
 import { textToEscPosBytes } from '@/lib/escpos';
 import { getStoredFirebaseConfig, saveStoredFirebaseConfig } from '@/lib/firebase';
-import { ReceiptOptions } from '@/types';
+import { ReceiptOptions, PrintPreset } from '@/types';
 import {
   Settings,
   Store,
@@ -16,15 +16,18 @@ import {
   Globe,
   Cloud,
   LogOut,
-  LogIn,
-  UserPlus,
   Check,
-  FileText,
   Sliders,
   Download,
   Laptop,
   Smartphone,
   CheckCircle2,
+  Plus,
+  Trash2,
+  Edit2,
+  Layers,
+  X,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export const SettingsScreen: React.FC = () => {
@@ -40,15 +43,15 @@ export const SettingsScreen: React.FC = () => {
     reloadFirebase,
   } = useAuth();
   const { language, setLanguage, t } = useLanguage();
-  const { triggerBrowserPrint } = useStore();
+  const { triggerBrowserPrint, categories } = useStore();
 
   // Store Info Form
-  const [storeName, setStoreName] = useState(profile.storeName || 'Pondok Bakso 168 DOI');
+  const [storeName, setStoreName] = useState(profile.storeName || 'Kasir-E POS');
   const [receiptHeader, setReceiptHeader] = useState(profile.receiptHeader || '');
   const [receiptFooter, setReceiptFooter] = useState(profile.receiptFooter || '');
   const [isSavedStore, setIsSavedStore] = useState(false);
 
-  // Receipt Options Form (Requirement 6)
+  // Receipt Options Form
   const defaultReceiptOpts: ReceiptOptions = {
     printStoreName: profile.receiptOptions?.printStoreName ?? true,
     printStoreAddress: profile.receiptOptions?.printStoreAddress ?? true,
@@ -58,6 +61,41 @@ export const SettingsScreen: React.FC = () => {
   };
   const [receiptOpts, setReceiptOpts] = useState<ReceiptOptions>(defaultReceiptOpts);
   const [isSavedReceiptOpts, setIsSavedReceiptOpts] = useState(false);
+
+  // Preset Summary Print State
+  const defaultPresets: PrintPreset[] = [
+    {
+      id: 'preset-kawul',
+      name: 'Rekap Kawul (Bakso)',
+      filterKeywords: ['bakso'],
+      category: 'all',
+      showItemQty: true,
+      showItemPrice: true,
+      showTotalPrice: true,
+    },
+    {
+      id: 'preset-mamah',
+      name: 'Rekap Total (Semua Menu)',
+      filterKeywords: [],
+      category: 'all',
+      showItemQty: true,
+      showItemPrice: true,
+      showTotalPrice: true,
+    },
+  ];
+
+  const presets = profile.printPresets && profile.printPresets.length > 0
+    ? profile.printPresets
+    : defaultPresets;
+
+  const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
+  const [editingPreset, setEditingPreset] = useState<PrintPreset | null>(null);
+  const [presetName, setPresetName] = useState('');
+  const [presetKeyword, setPresetKeyword] = useState('');
+  const [presetCategory, setPresetCategory] = useState('all');
+  const [presetShowQty, setPresetShowQty] = useState(true);
+  const [presetShowPrice, setPresetShowPrice] = useState(true);
+  const [presetShowTotal, setPresetShowTotal] = useState(true);
 
   // PIN Change Form
   const [oldPin, setOldPin] = useState('');
@@ -142,6 +180,81 @@ export const SettingsScreen: React.FC = () => {
     setTimeout(() => setIsSavedReceiptOpts(false), 2000);
   };
 
+  // Preset Handlers
+  const handleOpenAddPreset = () => {
+    setEditingPreset(null);
+    setPresetName('');
+    setPresetKeyword('');
+    setPresetCategory('all');
+    setPresetShowQty(true);
+    setPresetShowPrice(true);
+    setPresetShowTotal(true);
+    setIsPresetModalOpen(true);
+  };
+
+  const handleOpenEditPreset = (p: PrintPreset) => {
+    setEditingPreset(p);
+    setPresetName(p.name);
+    setPresetKeyword((p.filterKeywords || []).join(', '));
+    setPresetCategory(p.category || 'all');
+    setPresetShowQty(p.showItemQty ?? true);
+    setPresetShowPrice(p.showItemPrice ?? true);
+    setPresetShowTotal(p.showTotalPrice ?? true);
+    setIsPresetModalOpen(true);
+  };
+
+  const handleSavePreset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!presetName.trim()) {
+      alert('Nama preset rekap wajib diisi');
+      return;
+    }
+    const keywords = presetKeyword
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean);
+
+    let updatedList: PrintPreset[];
+    if (editingPreset) {
+      updatedList = presets.map((p) =>
+        p.id === editingPreset.id
+          ? {
+              ...p,
+              name: presetName.trim(),
+              filterKeywords: keywords,
+              category: presetCategory,
+              showItemQty: presetShowQty,
+              showItemPrice: presetShowPrice,
+              showTotalPrice: presetShowTotal,
+            }
+          : p
+      );
+    } else {
+      const newPreset: PrintPreset = {
+        id: `preset-${Date.now()}`,
+        name: presetName.trim(),
+        filterKeywords: keywords,
+        category: presetCategory,
+        showItemQty: presetShowQty,
+        showItemPrice: presetShowPrice,
+        showTotalPrice: presetShowTotal,
+      };
+      updatedList = [...presets, newPreset];
+    }
+
+    await updateProfileData({ printPresets: updatedList });
+    setIsPresetModalOpen(false);
+  };
+
+  const handleDeletePreset = async (id: string) => {
+    if (presets.length <= 1) {
+      alert('Minimal harus ada 1 preset cetak rekap');
+      return;
+    }
+    const filtered = presets.filter((p) => p.id !== id);
+    await updateProfileData({ printPresets: filtered });
+  };
+
   const handleUpdatePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (oldPin !== (profile.ownerPin || '123456')) {
@@ -180,8 +293,8 @@ export const SettingsScreen: React.FC = () => {
 
   const handleTestPrint = async () => {
     const testContent = `================================
-     PONDOK BAKSO 168 DOI       
-       TES CETAK THERMAL        
+       ${profile.storeName || 'KASIR-E POS'}
+        TES CETAK THERMAL       
 ================================
 Waktu : ${new Date().toLocaleTimeString('id-ID')}
 Karakter per baris : 32 kolom   
@@ -247,7 +360,7 @@ Printer berfungsi dengan baik!
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-32 space-y-6">
+    <div className="max-w-6xl mx-auto px-4 py-6 pb-32 space-y-6">
       {/* Title */}
       <div>
         <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
@@ -259,62 +372,13 @@ Printer berfungsi dengan baik!
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Card 0: PWA Download & Install App */}
-        <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white rounded-2xl p-5 border border-emerald-600/50 shadow-md flex flex-col justify-between md:col-span-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-white text-emerald-800 flex items-center justify-center font-black shadow-md shrink-0">
-                  <Download className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-white text-lg leading-tight">
-                    {t.installAppTitle}
-                  </h3>
-                  <p className="text-xs text-emerald-200 mt-0.5 max-w-xl">
-                    {t.installAppSubtitle}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {isInstalled ? (
-              <div className="flex items-center gap-2 bg-emerald-700/80 border border-emerald-400 px-4 py-2.5 rounded-xl text-white text-xs font-black shadow-sm shrink-0 self-start sm:self-auto">
-                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                <span>{t.appInstalledBadge}</span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleInstallApp}
-                className="h-11 px-5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all active:scale-[0.98] shrink-0 self-start sm:self-auto"
-              >
-                <Download className="w-4 h-4 text-emerald-700" />
-                <span>{t.installBtn}</span>
-              </button>
-            )}
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-emerald-700/60 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-emerald-200">
-            <span className="flex items-center gap-1.5">
-              <Laptop className="w-3.5 h-3.5" /> Desktop / Mac / Windows
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1.5">
-              <Smartphone className="w-3.5 h-3.5" /> Android / iPhone / iPad
-            </span>
-            <span>•</span>
-            <span className="text-emerald-100 font-medium">
-              {isIOS ? t.iosInstallHint : t.desktopInstallHint}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 1: Store Information & Receipt */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-3">
+      {/* Balanced 2-Column Responsive Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        {/* ================= LEFT COLUMN ================= */}
+        <div className="space-y-6">
+          {/* Card 1: Store Information & Receipt Header */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <h3 className="font-extrabold text-slate-900 text-base md:text-lg flex items-center gap-2 mb-3">
               <Store className="w-5 h-5 text-emerald-600" />
               {t.storeInfo}
             </h3>
@@ -374,159 +438,118 @@ Printer berfungsi dengan baik!
               </button>
             </form>
           </div>
-        </div>
 
-        {/* Card 2: Receipt Print Options (Requirement 6: Selective Receipt Printing) */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
-                <Sliders className="w-5 h-5 text-emerald-600" />
-                {t.receiptOptionsTitle}
-              </h3>
-              {isSavedReceiptOpts && (
-                <span className="text-xs font-black text-emerald-700 flex items-center gap-1 animate-fadeIn">
-                  <Check className="w-3.5 h-3.5" /> Tersimpan
-                </span>
-              )}
+          {/* Card 2: Preset Cetak Rekap (Manage Printed Summary Presets) */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-base md:text-lg flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-emerald-600" />
+                  Preset Cetak Rekap Transaksi
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Atur tombol preset ringkasan penjualan yang muncul di tab Transaksi
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenAddPreset}
+                className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition-all shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah</span>
+              </button>
             </div>
-            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-              {t.receiptOptionsSubtitle}
-            </p>
 
             <div className="space-y-2.5">
-              {[
-                { key: 'printStoreName' as const, label: t.optPrintStoreName },
-                { key: 'printStoreAddress' as const, label: t.optPrintStoreAddress },
-                { key: 'printDateTime' as const, label: t.optPrintDateTime },
-                { key: 'printNotes' as const, label: t.optPrintNotes },
-                { key: 'printFooter' as const, label: t.optPrintFooter },
-              ].map(({ key, label }) => {
-                const isChecked = !!receiptOpts[key];
-                return (
-                  <label
-                    key={key}
-                    onClick={() => handleToggleReceiptOpt(key)}
-                    className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
-                      isChecked
-                        ? 'bg-emerald-50/50 border-emerald-300 text-slate-900'
-                        : 'bg-slate-50 border-slate-200 text-slate-500'
-                    }`}
-                  >
-                    <span className="text-xs font-bold">{label}</span>
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => {}} // handled by parent onClick
-                      className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
-                    />
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: 58mm Bluetooth Thermal Printer */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-3">
-              <Printer className="w-5 h-5 text-emerald-600" />
-              {t.printerStatus}
-            </h3>
-
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 mb-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-600">Status:</span>
-                <span
-                  className={`text-xs font-black px-2.5 py-1 rounded-full ${
-                    isBtConnected
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-slate-200 text-slate-600'
-                  }`}
+              {presets.map((preset) => (
+                <div
+                  key={preset.id}
+                  className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3"
                 >
-                  {isBtConnected ? t.printerConnected : t.printerDisconnected}
-                </span>
-              </div>
-              {btDeviceName && (
-                <div className="text-xs text-slate-700 font-semibold mt-2">
-                  {t.deviceLabel}: <span className="font-black text-slate-900">{btDeviceName}</span>
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-slate-900 text-sm truncate">
+                        {preset.name}
+                      </span>
+                      {preset.filterKeywords && preset.filterKeywords.length > 0 && (
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-bold">
+                          Kata: {preset.filterKeywords.join(', ')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <span>Kategori: <b>{preset.category || 'Semua'}</b></span>
+                      <span>•</span>
+                      <span>Qty: <b>{preset.showItemQty ? 'Ya' : 'Tidak'}</b></span>
+                      <span>•</span>
+                      <span>Subtotal: <b>{preset.showItemPrice ? 'Ya' : 'Tidak'}</b></span>
+                      <span>•</span>
+                      <span>Total: <b>{preset.showTotalPrice ? 'Ya' : 'Tidak'}</b></span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditPreset(preset)}
+                      className="w-8 h-8 rounded-lg bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center border border-slate-200 transition-all"
+                      title="Edit Preset"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePreset(preset.id)}
+                      className="w-8 h-8 rounded-lg bg-white hover:bg-rose-50 text-rose-600 flex items-center justify-center border border-slate-200 transition-all"
+                      title="Hapus Preset"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-              )}
-              <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                {t.printerDescription}
-              </p>
+              ))}
             </div>
           </div>
 
-          <div className="space-y-2">
-            {isBtConnected ? (
-              <button
-                type="button"
-                onClick={handleDisconnectBt}
-                className="w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-all flex items-center justify-center"
-              >
-                {t.disconnectPrinter}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleConnectBt}
-                disabled={btLoading}
-                className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm flex items-center justify-center gap-2 transition-all"
-              >
-                <Printer className="w-4 h-4" />
-                <span>{btLoading ? t.searchingDevice : t.connectPrinter}</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={handleTestPrint}
-              className="w-full h-10 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 transition-all flex items-center justify-center"
-            >
-              {t.testPrint}
-            </button>
-          </div>
-        </div>
-
-        {/* Card 4: Change Owner PIN */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-3">
+          {/* Card 3: Change Owner PIN */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <h3 className="font-extrabold text-slate-900 text-base md:text-lg flex items-center gap-2 mb-3">
               <KeyRound className="w-5 h-5 text-emerald-600" />
               {t.ownerPinSetting}
             </h3>
 
             <form onSubmit={handleUpdatePin} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {t.oldPinLabel}
-                </label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={oldPin}
-                  onChange={(e) => setOldPin(e.target.value)}
-                  placeholder="123456"
-                  className="w-full h-11 px-3 rounded-xl border border-slate-300 font-black text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {t.oldPinLabel}
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={oldPin}
+                    onChange={(e) => setOldPin(e.target.value)}
+                    placeholder="123456"
+                    className="w-full h-11 px-3 rounded-xl border border-slate-300 font-black text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {t.newPinLabel}
-                </label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={newPin}
-                  onChange={(e) => setNewPin(e.target.value)}
-                  placeholder="6 digit"
-                  className="w-full h-11 px-3 rounded-xl border border-slate-300 font-black text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {t.newPinLabel}
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value)}
+                    placeholder="6 digit"
+                    className="w-full h-11 px-3 rounded-xl border border-slate-300 font-black text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
 
               {pinMessage && (
@@ -549,46 +572,193 @@ Printer berfungsi dengan baik!
           </div>
         </div>
 
-        {/* Card 5: Language Selection & Cloud Session */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between md:col-span-2">
-          <div>
-            <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-3">
+        {/* ================= RIGHT COLUMN ================= */}
+        <div className="space-y-6">
+          {/* Card 4: Language Selection & Download App (placed side-by-side as requested) */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <h3 className="font-extrabold text-slate-900 text-base md:text-lg flex items-center gap-2 mb-3">
               <Globe className="w-5 h-5 text-emerald-600" />
-              {t.languageSetting}
+              {t.languageSetting} & Aplikasi
             </h3>
 
-            <div className="grid grid-cols-2 gap-3 mb-6 max-w-md">
-              <button
-                type="button"
-                onClick={() => setLanguage('id')}
-                className={`h-11 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-2 ${
-                  language === 'id'
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                    : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                }`}
-              >
-                🇮🇩 Bahasa Indonesia (Default)
-              </button>
-              <button
-                type="button"
-                onClick={() => setLanguage('en')}
-                className={`h-11 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-2 ${
-                  language === 'en'
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                    : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                }`}
-              >
-                🇬🇧 English
-              </button>
+            <div className="space-y-4">
+              {/* Language Switcher Buttons */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Pilih Bahasa / Choose Language:
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setLanguage('id')}
+                    className={`h-11 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1.5 ${
+                      language === 'id'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    🇮🇩 Bahasa Indonesia
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLanguage('en')}
+                    className={`h-11 rounded-xl text-xs font-black border transition-all flex items-center justify-center gap-1.5 ${
+                      language === 'en'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    🇬🇧 English
+                  </button>
+                </div>
+              </div>
+
+              {/* Simplified Download App Button (Right next to language as requested) */}
+              <div className="pt-3 border-t border-slate-100">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Aplikasi Desktop / Mobile (PWA):
+                </label>
+                {isInstalled ? (
+                  <div className="h-11 px-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center gap-2 shadow-sm">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Aplikasi Sudah Terpasang</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleInstallApp}
+                    className="w-full h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-1">
+                      <Laptop className="w-4 h-4" />
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <span>{language === 'id' ? 'Pasang / Download Aplikasi' : 'Download / Install App'}</span>
+                  </button>
+                )}
+                <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                  Bisa dipasang langsung di Komputer (Mac/Windows) atau Smartphone tanpa perlu membuka browser.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 5: Receipt Print Options */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-extrabold text-slate-900 text-base md:text-lg flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-emerald-600" />
+                {t.receiptOptionsTitle}
+              </h3>
+              {isSavedReceiptOpts && (
+                <span className="text-xs font-black text-emerald-700 flex items-center gap-1 animate-fadeIn">
+                  <Check className="w-3.5 h-3.5" /> Tersimpan
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+              {t.receiptOptionsSubtitle}
+            </p>
+
+            <div className="space-y-2">
+              {[
+                { key: 'printStoreName' as const, label: t.optPrintStoreName },
+                { key: 'printStoreAddress' as const, label: t.optPrintStoreAddress },
+                { key: 'printDateTime' as const, label: t.optPrintDateTime },
+                { key: 'printNotes' as const, label: t.optPrintNotes },
+                { key: 'printFooter' as const, label: t.optPrintFooter },
+              ].map(({ key, label }) => {
+                const isChecked = !!receiptOpts[key];
+                return (
+                  <label
+                    key={key}
+                    onClick={() => handleToggleReceiptOpt(key)}
+                    className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+                      isChecked
+                        ? 'bg-emerald-50/60 border-emerald-300 text-slate-900'
+                        : 'bg-slate-50 border-slate-200 text-slate-500'
+                    }`}
+                  >
+                    <span className="text-xs font-bold">{label}</span>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => {}}
+                      className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Card 6: 58mm Bluetooth Thermal Printer */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <h3 className="font-extrabold text-slate-900 text-base md:text-lg flex items-center gap-2 mb-3">
+              <Printer className="w-5 h-5 text-emerald-600" />
+              {t.printerStatus}
+            </h3>
+
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 mb-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-600">Status:</span>
+                <span
+                  className={`text-xs font-black px-2.5 py-0.5 rounded-full ${
+                    isBtConnected
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  {isBtConnected ? t.printerConnected : t.printerDisconnected}
+                </span>
+              </div>
+              {btDeviceName && (
+                <div className="text-xs text-slate-700 font-semibold mt-1.5">
+                  {t.deviceLabel}: <span className="font-black text-slate-900">{btDeviceName}</span>
+                </div>
+              )}
             </div>
 
-            <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2 mb-2">
+            <div className="space-y-2">
+              {isBtConnected ? (
+                <button
+                  type="button"
+                  onClick={handleDisconnectBt}
+                  className="w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-all flex items-center justify-center"
+                >
+                  {t.disconnectPrinter}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnectBt}
+                  disabled={btLoading}
+                  className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm flex items-center justify-center gap-2 transition-all"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>{btLoading ? t.searchingDevice : t.connectPrinter}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleTestPrint}
+                className="w-full h-10 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 transition-all flex items-center justify-center"
+              >
+                {t.testPrint}
+              </button>
+            </div>
+          </div>
+
+          {/* Card 7: Cloud Sync (Firebase) */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <h3 className="font-extrabold text-slate-900 text-base md:text-lg flex items-center gap-2 mb-2">
               <Cloud className="w-5 h-5 text-emerald-600" />
               {t.cloudSyncTitle}
             </h3>
 
             {isFirebaseConfigured && user ? (
-              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-3 max-w-md">
+              <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-600 font-semibold">{t.firebaseConnected}:</span>
                   <span className="text-xs font-black text-emerald-800">{user.email}</span>
@@ -596,27 +766,27 @@ Printer berfungsi dengan baik!
                 <button
                   type="button"
                   onClick={logout}
-                  className="w-full h-11 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                  className="w-full h-10 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>{t.logoutBtn}</span>
                 </button>
               </div>
             ) : isFirebaseConfigured ? (
-              <form onSubmit={handleLogin} className="space-y-3 max-w-md">
+              <form onSubmit={handleLogin} className="space-y-2.5">
                 <input
                   type="email"
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
                   placeholder={t.emailLabel}
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-xs font-semibold"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-semibold"
                 />
                 <input
                   type="password"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
                   placeholder={t.passwordLabel}
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-xs font-semibold"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs font-semibold"
                 />
                 {authError && (
                   <p className="text-xs text-rose-600 font-bold">{authError}</p>
@@ -625,7 +795,7 @@ Printer berfungsi dengan baik!
                   <button
                     type="submit"
                     disabled={authLoading}
-                    className="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center"
+                    className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center justify-center"
                   >
                     {authLoading ? '...' : t.loginBtn}
                   </button>
@@ -633,21 +803,21 @@ Printer berfungsi dengan baik!
                     type="button"
                     onClick={handleRegister}
                     disabled={authLoading}
-                    className="flex-1 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 flex items-center justify-center"
+                    className="flex-1 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 flex items-center justify-center"
                   >
                     {t.registerBtn}
                   </button>
                 </div>
               </form>
             ) : (
-              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 max-w-md">
-                <p className="text-xs text-amber-900 font-semibold mb-3">
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                <p className="text-xs text-amber-900 font-semibold mb-2">
                   {t.firebaseNotConfigured}
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsFirebaseConfigModalOpen(true)}
-                  className="w-full h-11 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-sm transition-all flex items-center justify-center"
+                  className="w-full h-10 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-sm transition-all flex items-center justify-center"
                 >
                   {t.firebaseConfigureBtn}
                 </button>
@@ -656,6 +826,132 @@ Printer berfungsi dengan baik!
           </div>
         </div>
       </div>
+
+      {/* Preset Modal (Add / Edit) */}
+      {isPresetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div className="bg-emerald-600 text-white p-5 flex items-center justify-between">
+              <h3 className="text-lg font-black flex items-center gap-2">
+                <Layers className="w-5 h-5" />
+                {editingPreset ? 'Edit Preset Rekap' : 'Tambah Preset Rekap Baru'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsPresetModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-emerald-700/60 hover:bg-emerald-700 text-white flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePreset} className="p-5 space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nama Preset
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  placeholder="Contoh: Rekap Dapur / Rekap Minuman"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Filter Kata Kunci Menu (Pisahkan koma, kosongkan untuk semua)
+                </label>
+                <input
+                  type="text"
+                  value={presetKeyword}
+                  onChange={(e) => setPresetKeyword(e.target.value)}
+                  placeholder="Contoh: bakso, urat (opsional)"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Filter Kategori Menu
+                </label>
+                <select
+                  value={presetCategory}
+                  onChange={(e) => setPresetCategory(e.target.value)}
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="all">Semua Kategori</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c.charAt(0).toUpperCase() + c.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2 pt-1 border-t border-slate-100">
+                <label className="block text-xs font-bold text-slate-700">
+                  Opsi Tampilan pada Struk Ringkasan:
+                </label>
+
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none">
+                  <span className="text-xs font-semibold text-slate-800">
+                    Cetak Jumlah Item (Qty)
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={presetShowQty}
+                    onChange={(e) => setPresetShowQty(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none">
+                  <span className="text-xs font-semibold text-slate-800">
+                    Cetak Subtotal Harga per Item
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={presetShowPrice}
+                    onChange={(e) => setPresetShowPrice(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none">
+                  <span className="text-xs font-semibold text-slate-800">
+                    Cetak Total Keseluruhan (Grand Total)
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={presetShowTotal}
+                    onChange={(e) => setPresetShowTotal(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                  />
+                </label>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPresetModalOpen(false)}
+                  className="flex-1 h-11 rounded-xl bg-slate-100 font-bold text-slate-700 text-xs"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-black text-white text-xs shadow-md"
+                >
+                  Simpan Preset
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Firebase Config Modal */}
       {isFirebaseConfigModalOpen && (

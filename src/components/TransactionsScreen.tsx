@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { useStore } from '@/context/StoreContext';
+import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { Transaction } from '@/types';
+import { Transaction, PrintPreset } from '@/types';
 import { formatRupiah } from '@/lib/escpos';
 import {
   Receipt,
@@ -31,10 +32,32 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
   const {
     transactions,
     printSingleTransaction,
+    printPresetSummaryReport,
     printKawulReport,
     printMamahReport,
   } = useStore();
+  const { profile } = useAuth();
   const { t, language } = useLanguage();
+
+  const presets = profile.printPresets && profile.printPresets.length > 0
+    ? profile.printPresets
+    : [
+        {
+          id: 'preset-kawul',
+          name: 'Rekap Kawul (Bakso)',
+          filterKeywords: ['bakso'],
+          showItemQty: true,
+          showItemPrice: true,
+          showTotalPrice: true,
+        },
+        {
+          id: 'preset-mamah',
+          name: 'Rekap Total (Semua Menu)',
+          showItemQty: true,
+          showItemPrice: true,
+          showTotalPrice: true,
+        },
+      ];
 
   // Multi-select state: set of selected transaction IDs
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
@@ -170,6 +193,14 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
     return transactions.filter((t) => selectedTxIds.has(t.id));
   }, [transactions, selectedTxIds]);
 
+  const handlePrintPreset = async (preset: PrintPreset) => {
+    if (selectedList.length === 0) {
+      alert('Pilih setidaknya 1 transaksi untuk rekap');
+      return;
+    }
+    await printPresetSummaryReport(selectedList, preset);
+  };
+
   const handlePrintKawul = async () => {
     if (selectedList.length === 0) {
       alert('Pilih setidaknya 1 transaksi untuk rekap Kawul');
@@ -261,37 +292,30 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
           )}
         </button>
 
-        {/* Aggregated Report Buttons */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* Print Kawul (Bakso items only) */}
-          <button
-            type="button"
-            onClick={handlePrintKawul}
-            disabled={selectedTxIds.size === 0}
-            className={`flex-1 sm:flex-initial h-11 px-4 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all ${
-              selectedTxIds.size > 0
-                ? 'bg-amber-600 hover:bg-amber-700 text-white active:scale-95'
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-            }`}
-          >
-            <Printer className="w-4 h-4" />
-            <span>{t.printKawul}</span>
-          </button>
-
-          {/* Print Mamah (Full Summary) */}
-          <button
-            type="button"
-            onClick={handlePrintMamah}
-            disabled={selectedTxIds.size === 0}
-            className={`flex-1 sm:flex-initial h-11 px-4 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all ${
-              selectedTxIds.size > 0
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-            }`}
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>{t.printMamah}</span>
-          </button>
+        {/* Dynamic Preset Summary Report Buttons */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {presets.map((preset, index) => {
+            const isFirst = index === 0;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => handlePrintPreset(preset)}
+                disabled={selectedTxIds.size === 0}
+                className={`flex-1 sm:flex-initial h-11 px-4 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all whitespace-nowrap ${
+                  selectedTxIds.size > 0
+                    ? isFirst
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white active:scale-95'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                }`}
+                title={`Cetak ${preset.name}`}
+              >
+                <Printer className="w-4 h-4" />
+                <span>{preset.name}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
