@@ -43,21 +43,21 @@ export const getDefaultStoreNameForUser = (email?: string | null): string => {
   if (email && email.toLowerCase().trim() === 'ryan.rafael2004@gmail.com') {
     return 'Pondok Bakso 168 by DOI';
   }
-  if (email) {
+  if (email && email.includes('@')) {
     const prefix = email.split('@')[0];
     const capitalized = prefix.charAt(0).toUpperCase() + prefix.slice(1);
     return `Toko ${capitalized}`;
   }
-  return 'Pondok Bakso 168 by DOI';
+  return 'Toko Saya';
 };
 
 const DEFAULT_PROFILE: UserProfile = {
   uid: 'owner-local',
-  email: 'ryan.rafael2004@gmail.com',
+  email: null,
   displayName: 'Pemilik Toko',
-  storeName: 'Pondok Bakso 168 by DOI',
+  storeName: 'Toko Saya',
   ownerPin: '123456',
-  receiptHeader: 'Pondok Bakso 168 by DOI - Spesial Bakso Sapi',
+  receiptHeader: 'Kasir-E POS - Struk Penjualan',
   receiptFooter: 'Terima Kasih Atas Kunjungan Anda',
   receiptOptions: DEFAULT_RECEIPT_OPTIONS,
   language: 'id',

@@ -104,7 +104,7 @@ export const MenuScreen: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-28">
+    <div className="max-w-4xl mx-auto px-4 py-6 pb-32 md:pb-24">
       {/* Header & Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>

@@ -14,7 +14,7 @@ export const LoginScreen: React.FC = () => {
   } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 
-  const [email, setEmail] = useState('ryan.rafael2004@gmail.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [storeNameInput, setStoreNameInput] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -34,7 +34,7 @@ export const LoginScreen: React.FC = () => {
     try {
       if (isFirebaseConfigured) {
         if (isRegisterMode) {
-          const finalStoreName = storeNameInput.trim() || getDefaultStoreNameForUser(email);
+          const finalStoreName = storeNameInput.trim() || getDefaultStoreNameForUser(email.trim());
           await registerWithEmail(email.trim(), password, finalStoreName);
         } else {
           await loginWithEmail(email.trim(), password);
@@ -114,7 +114,7 @@ export const LoginScreen: React.FC = () => {
           {isRegisterMode && (
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Nama Toko / Restoran (Opsional)
+                Nama Toko / Usaha (Opsional)
               </label>
               <div className="relative">
                 <Store className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -122,7 +122,7 @@ export const LoginScreen: React.FC = () => {
                   type="text"
                   value={storeNameInput}
                   onChange={(e) => setStoreNameInput(e.target.value)}
-                  placeholder="Pondok Bakso 168 by DOI"
+                  placeholder="Contoh: Rumah Makan / Toko Berkah"
                   className="w-full h-12 pl-10 pr-3.5 rounded-xl border border-slate-300 font-semibold text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -140,7 +140,7 @@ export const LoginScreen: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ryan.rafael2004@gmail.com"
+                placeholder="nama@email.com"
                 className="w-full h-12 pl-10 pr-3.5 rounded-xl border border-slate-300 font-semibold text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>

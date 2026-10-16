@@ -129,9 +129,9 @@ export const PosScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-64px)] pb-36">
+    <div className="flex flex-col min-h-[calc(100vh-64px)] pb-44 md:pb-32">
       {/* Category Tabs & Search Bar */}
-      <div className="bg-white border-b border-slate-200 sticky top-14 md:top-14 z-20 shadow-sm p-3">
+      <div className="bg-white border-b border-slate-200 sticky top-14 z-20 shadow-sm p-3">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between">
           {/* Category Tabs (Large touch pills with color coordination) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -213,7 +213,7 @@ export const PosScreen: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {filteredItems.map((item) => {
               const inCart = cart[item.id];
               const qty = inCart ? inCart.quantity : 0;
@@ -312,7 +312,7 @@ export const PosScreen: React.FC = () => {
       </div>
 
       {/* Sticky Bottom Bar / Cart Subtotal */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-slate-200 shadow-2xl p-3 md:p-4 print:hidden">
+      <div className="fixed bottom-14 md:bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-slate-200 shadow-2xl p-3 md:p-4 print:hidden">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           {/* Left: Summary */}
           <div className="flex items-center gap-3">

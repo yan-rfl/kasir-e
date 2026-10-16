@@ -196,7 +196,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-28">
+    <div className="max-w-4xl mx-auto px-4 py-6 pb-32 md:pb-24">
       {/* Top Bar Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>

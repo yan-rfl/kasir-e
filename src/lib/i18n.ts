@@ -151,14 +151,24 @@ export const translations = {
     logoutBtn: 'Keluar Akun',
     accountCreated: 'Akun berhasil dibuat!',
     loginSuccess: 'Berhasil masuk!',
+    printerBtnShort: 'Printer BT',
+    printerBtnConnected: '58mm ON',
     loginRequiredNotice: 'Aplikasi ini khusus untuk pemilik toko. Silakan masuk terlebih dahulu.',
     demoBypassBtn: 'Masuk dengan Akun Uji Coba (Offline/Demo)',
+
+    // PWA Install / Download App
+    installAppTitle: 'Unduh & Pasang Aplikasi Kasir-E',
+    installAppSubtitle: 'Pasang aplikasi di Komputer / Laptop / HP untuk operasional kasir cepat tanpa browser',
+    installBtn: 'Pasang Aplikasi Sekarang',
+    appInstalledBadge: 'Aplikasi Sudah Terpasang (Mode Standalone)',
+    iosInstallHint: 'Untuk iPhone/iPad: Ketuk ikon Bagikan (Share) ⎋ di Safari, lalu pilih "Tambahkan ke Layar Utama".',
+    desktopInstallHint: 'Untuk Chrome/Edge: Anda juga dapat mengeklik ikon instal (layar dengan panah bawah) di bilah alamat browser.',
   },
   en: {
     // Navigation & App Bar
     appName: 'Kasir-E',
     tagline: 'Fast & Simple POS',
-    navPos: 'Register',
+    navPos: 'Cashier',
     navMenu: 'Menu',
     navTransactions: 'Transactions',
     navSettings: 'Settings',
@@ -306,5 +316,15 @@ export const translations = {
     loginSuccess: 'Successfully logged in!',
     loginRequiredNotice: 'This app requires owner login before use. Please sign in.',
     demoBypassBtn: 'Continue with Demo Account (Offline/Testing)',
+    printerBtnShort: 'BT Printer',
+    printerBtnConnected: '58mm ON',
+
+    // PWA Install / Download App
+    installAppTitle: 'Download & Install Kasir-E App',
+    installAppSubtitle: 'Install the app directly on your Desktop / Laptop / Mobile phone for fast cashier workflow',
+    installBtn: 'Install App Now',
+    appInstalledBadge: 'App Already Installed (Standalone Mode)',
+    iosInstallHint: 'For iPhone/iPad: Tap the Share icon ⎋ in Safari, then tap "Add to Home Screen".',
+    desktopInstallHint: 'For Chrome/Edge: You can also click the install icon (monitor with down arrow) in the address bar.',
   },
 };

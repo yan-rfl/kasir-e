@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useStore } from '@/context/StoreContext';
@@ -21,6 +21,10 @@ import {
   Check,
   FileText,
   Sliders,
+  Download,
+  Laptop,
+  Smartphone,
+  CheckCircle2,
 } from 'lucide-react';
 
 export const SettingsScreen: React.FC = () => {
@@ -71,12 +75,43 @@ export const SettingsScreen: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Firebase Config Modal
-  const [isFirebaseConfigModalOpen, setIsFirebaseConfigModalOpen] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const [authDomain, setAuthDomain] = useState('');
-  const [appId, setAppId] = useState('');
+  // PWA Install State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const standalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true;
+      setIsInstalled(standalone);
+      setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream);
+
+      const handleBeforeInstall = (e: Event) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+      };
+
+      window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+      return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    }
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult.outcome === 'accepted') {
+        setIsInstalled(true);
+        setDeferredPrompt(null);
+      }
+    } else if (isIOS) {
+      alert(t.iosInstallHint);
+    } else {
+      alert(`${t.desktopInstallHint}\n\n${t.iosInstallHint}`);
+    }
+  };
 
   const handleSaveStoreInfo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +253,57 @@ Printer berfungsi dengan baik!
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Card 0: PWA Download & Install App */}
+        <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white rounded-2xl p-5 border border-emerald-600/50 shadow-md flex flex-col justify-between md:col-span-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-white text-emerald-800 flex items-center justify-center font-black shadow-md shrink-0">
+                  <Download className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-white text-lg leading-tight">
+                    {t.installAppTitle}
+                  </h3>
+                  <p className="text-xs text-emerald-200 mt-0.5 max-w-xl">
+                    {t.installAppSubtitle}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {isInstalled ? (
+              <div className="flex items-center gap-2 bg-emerald-700/80 border border-emerald-400 px-4 py-2.5 rounded-xl text-white text-xs font-black shadow-sm shrink-0 self-start sm:self-auto">
+                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                <span>{t.appInstalledBadge}</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleInstallApp}
+                className="h-11 px-5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all active:scale-[0.98] shrink-0 self-start sm:self-auto"
+              >
+                <Download className="w-4 h-4 text-emerald-700" />
+                <span>{t.installBtn}</span>
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-emerald-700/60 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-emerald-200">
+            <span className="flex items-center gap-1.5">
+              <Laptop className="w-3.5 h-3.5" /> Desktop / Mac / Windows
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5">
+              <Smartphone className="w-3.5 h-3.5" /> Android / iPhone / iPad
+            </span>
+            <span>•</span>
+            <span className="text-emerald-100 font-medium">
+              {isIOS ? t.iosInstallHint : t.desktopInstallHint}
+            </span>
+          </div>
+        </div>
+
         {/* Card 1: Store Information & Receipt */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
