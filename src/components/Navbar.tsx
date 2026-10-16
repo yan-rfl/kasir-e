@@ -65,21 +65,47 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between">
         {/* Left: Brand & Store Name */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white text-emerald-700 flex items-center justify-center font-black text-xl shadow-inner shrink-0">
-            168
+          <div className="w-10 h-10 rounded-xl bg-white text-emerald-700 flex items-center justify-center shadow-inner shrink-0">
+            {/* Cashier Register Icon */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-6 h-6 text-emerald-700"
+            >
+              <rect width="18" height="12" x="3" y="9" rx="2" />
+              <path d="M7 9V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v4" />
+              <line x1="7" x2="17" y1="13" y2="13" />
+              <line x1="7" x2="9" y1="17" y2="17" />
+              <line x1="12" x2="14" y1="17" y2="17" />
+            </svg>
           </div>
           <div>
-            <h1 className="font-bold text-base sm:text-lg leading-tight tracking-wide line-clamp-1">
-              {profile.storeName || 'Pondok Bakso 168 DOI'}
-            </h1>
-            <p className="text-xs text-emerald-200">
+            <div className="flex items-center gap-2">
+              <h1 className="font-black text-lg leading-tight tracking-wide">
+                Kasir-E
+              </h1>
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-800/80 text-emerald-100 border border-emerald-600/60 line-clamp-1 max-w-[200px]">
+                {profile.storeName || 'Pondok Bakso 168 by DOI'}
+              </span>
+            </div>
+            <p className="text-xs text-emerald-200 flex items-center gap-1.5 mt-0.5">
+              <span className="sm:hidden font-bold text-white line-clamp-1 max-w-[130px]">
+                {profile.storeName || 'Pondok Bakso 168 by DOI'} •
+              </span>
               {isFirebaseConfigured && user ? (
-                <span className="flex items-center gap-1">
-                  <Wifi className="w-3 h-3 text-emerald-300 inline" /> {user.email || t.onlineMode}
+                <span className="flex items-center gap-1 line-clamp-1">
+                  <Wifi className="w-3 h-3 text-emerald-300 inline shrink-0" />
+                  <span className="truncate">{user.email}</span>
                 </span>
               ) : (
                 <span className="flex items-center gap-1">
-                  <WifiOff className="w-3 h-3 text-amber-300 inline" /> {t.demoMode}
+                  <WifiOff className="w-3 h-3 text-amber-300 inline shrink-0" />
+                  <span>{t.demoMode}</span>
                 </span>
               )}
             </p>
