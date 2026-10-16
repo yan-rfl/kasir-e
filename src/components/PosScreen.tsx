@@ -56,7 +56,10 @@ export const PosScreen: React.FC = () => {
   }, [menuItems, selectedCategory, searchQuery]);
 
   const handleOpenCheckout = () => {
-    if (cartCount === 0) return;
+    if (cartCount === 0) {
+      alert('Keranjang masih kosong! Silakan ketuk salah satu menu makanan atau minuman di atas terlebih dahulu.');
+      return;
+    }
     setCashReceived(cartTotal.toString());
     setCustomerNote('');
     setIsCheckoutModalOpen(true);
@@ -169,19 +172,27 @@ export const PosScreen: React.FC = () => {
               return (
                 <div
                   key={item.id}
-                  className={`bg-white rounded-2xl p-3.5 border-2 transition-all flex flex-col justify-between select-none shadow-sm ${
+                  onClick={() => addToCart(item)}
+                  className={`bg-white rounded-2xl p-3.5 border-2 transition-all flex flex-col justify-between select-none shadow-sm cursor-pointer active:scale-[0.98] group ${
                     qty > 0
                       ? 'border-emerald-500 shadow-md ring-2 ring-emerald-100 bg-emerald-50/20'
-                      : 'border-slate-200 hover:border-slate-300 hover:shadow'
+                      : 'border-slate-200 hover:border-emerald-400 hover:shadow'
                   }`}
                 >
                   <div>
                     {/* Category Tag */}
-                    <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-600 uppercase tracking-wider mb-1.5">
-                      {item.category || 'makanan'}
-                    </span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-600 uppercase tracking-wider">
+                        {item.category || 'makanan'}
+                      </span>
+                      {qty > 0 && (
+                        <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-bounce">
+                          {qty}x di keranjang
+                        </span>
+                      )}
+                    </div>
                     {/* Item Name */}
-                    <h4 className="font-extrabold text-slate-900 text-base leading-snug line-clamp-2 min-h-[44px]">
+                    <h4 className="font-extrabold text-slate-900 text-base leading-snug line-clamp-2 min-h-[44px] group-hover:text-emerald-700 transition-colors">
                       {item.name}
                     </h4>
                   </div>
@@ -193,9 +204,16 @@ export const PosScreen: React.FC = () => {
                     </div>
 
                     {/* Stepper with Large Min-48px Touch Targets */}
-                    <div className="flex items-center justify-between gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200/80">
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center justify-between gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200/80"
+                    >
                       <button
-                        onClick={() => decrementFromCart(item)}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          decrementFromCart(item);
+                        }}
                         disabled={qty === 0}
                         aria-label="Kurang satu"
                         className={`w-11 h-11 rounded-lg flex items-center justify-center font-black transition-all ${
@@ -216,7 +234,11 @@ export const PosScreen: React.FC = () => {
                       </span>
 
                       <button
-                        onClick={() => addToCart(item)}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToCart(item);
+                        }}
                         aria-label="Tambah satu"
                         className="w-11 h-11 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white flex items-center justify-center font-black shadow-sm transition-all"
                       >
@@ -262,12 +284,12 @@ export const PosScreen: React.FC = () => {
 
           {/* Right: Checkout Button (Large Prominent Action) */}
           <button
+            type="button"
             onClick={handleOpenCheckout}
-            disabled={cartCount === 0}
             className={`py-3.5 px-6 md:px-10 rounded-2xl font-black text-base md:text-lg flex items-center gap-2.5 shadow-lg transition-all active:scale-[0.98] ${
               cartCount > 0
                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-emerald-200'
-                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-200 text-slate-500 hover:bg-slate-300 cursor-pointer'
             }`}
           >
             <Banknote className="w-6 h-6" />

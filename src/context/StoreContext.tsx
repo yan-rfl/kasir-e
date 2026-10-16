@@ -150,7 +150,9 @@ const SEED_MENU_ITEMS: Omit<MenuItem, 'userId'>[] = [
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, isFirebaseConfigured } = useAuth();
 
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(() =>
+    SEED_MENU_ITEMS.map((item) => ({ ...item, userId: 'local-owner' }))
+  );
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txCounter, setTxCounter] = useState<number>(1);
   const [cart, setCart] = useState<{ [id: string]: OrderItem }>({});

@@ -77,9 +77,12 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
         <h3 className="text-xl font-black text-slate-800">
           {title || t.pinRequiredTitle}
         </h3>
-        <p className="text-xs text-slate-500 mt-1 mb-5">
+        <p className="text-xs text-slate-500 mt-1 mb-2">
           {t.pinPromptDesc}
         </p>
+        <span className="inline-block px-3 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-800 mb-5">
+          PIN Bawaan: 123456
+        </span>
 
         {/* 6-Digit PIN Display Circles */}
         <div className="flex justify-center gap-3 mb-6">
