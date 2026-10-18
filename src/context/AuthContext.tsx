@@ -343,7 +343,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { db } = initFirebase();
       if (db) {
         const userDocRef = doc(db, 'users', user.uid);
-        await setDoc(userDocRef, updated, { merge: true });
+        // Strip any undefined fields so Firestore setDoc never rejects with Unsupported field value: undefined
+        const sanitized = JSON.parse(JSON.stringify(updated));
+        await setDoc(userDocRef, sanitized, { merge: true });
       }
     }
   };

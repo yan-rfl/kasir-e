@@ -102,6 +102,7 @@ export const SettingsScreen: React.FC = () => {
   const [presetPrintFooter, setPresetPrintFooter] = useState(true);
   const [presetCustomHeader, setPresetCustomHeader] = useState('');
   const [presetCustomFooter, setPresetCustomFooter] = useState('');
+  const [isSavingPreset, setIsSavingPreset] = useState(false);
 
   // PIN Change Form
   const [oldPin, setOldPin] = useState('');
@@ -223,20 +224,22 @@ export const SettingsScreen: React.FC = () => {
       alert('Nama preset rekap wajib diisi');
       return;
     }
-    const keywords = presetKeyword
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean);
+    setIsSavingPreset(true);
+    try {
+      const keywords = presetKeyword
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean);
 
-    const headerVal = presetCustomHeader.trim() || undefined;
-    const footerVal = presetCustomFooter.trim() || undefined;
+      const headerVal = presetCustomHeader.trim();
+      const footerVal = presetCustomFooter.trim();
 
-    let updatedList: PrintPreset[];
-    if (editingPreset) {
-      updatedList = presets.map((p) =>
-        p.id === editingPreset.id
-          ? {
-              ...p,
+      let updatedList: PrintPreset[];
+      if (editingPreset) {
+        updatedList = presets.map((p) => {
+          if (p.id === editingPreset.id) {
+            const item: PrintPreset = {
+              id: p.id,
               name: presetName.trim(),
               filterKeywords: keywords,
               category: presetCategory,
@@ -245,30 +248,38 @@ export const SettingsScreen: React.FC = () => {
               showTotalPrice: presetShowTotal,
               printStoreHeader: presetPrintHeader,
               printFooter: presetPrintFooter,
-              customHeader: headerVal,
-              customFooter: footerVal,
-            }
-          : p
-      );
-    } else {
-      const newPreset: PrintPreset = {
-        id: `preset-${Date.now()}`,
-        name: presetName.trim(),
-        filterKeywords: keywords,
-        category: presetCategory,
-        showItemQty: presetShowQty,
-        showItemPrice: presetShowPrice,
-        showTotalPrice: presetShowTotal,
-        printStoreHeader: presetPrintHeader,
-        printFooter: presetPrintFooter,
-        customHeader: headerVal,
-        customFooter: footerVal,
-      };
-      updatedList = [...presets, newPreset];
-    }
+            };
+            if (headerVal) item.customHeader = headerVal;
+            if (footerVal) item.customFooter = footerVal;
+            return item;
+          }
+          return p;
+        });
+      } else {
+        const newPreset: PrintPreset = {
+          id: `preset-${Date.now()}`,
+          name: presetName.trim(),
+          filterKeywords: keywords,
+          category: presetCategory,
+          showItemQty: presetShowQty,
+          showItemPrice: presetShowPrice,
+          showTotalPrice: presetShowTotal,
+          printStoreHeader: presetPrintHeader,
+          printFooter: presetPrintFooter,
+        };
+        if (headerVal) newPreset.customHeader = headerVal;
+        if (footerVal) newPreset.customFooter = footerVal;
+        updatedList = [...presets, newPreset];
+      }
 
-    await updateProfileData({ printPresets: updatedList });
-    setIsPresetModalOpen(false);
+      await updateProfileData({ printPresets: updatedList });
+      setIsPresetModalOpen(false);
+    } catch (err: any) {
+      console.error('Error saving preset:', err);
+      alert('Gagal menyimpan preset: ' + (err.message || 'Terjadi kesalahan sistem'));
+    } finally {
+      setIsSavingPreset(false);
+    }
   };
 
   const handleDeletePreset = async (id: string) => {
@@ -276,8 +287,13 @@ export const SettingsScreen: React.FC = () => {
       alert('Minimal harus ada 1 preset cetak rekap');
       return;
     }
-    const filtered = presets.filter((p) => p.id !== id);
-    await updateProfileData({ printPresets: filtered });
+    try {
+      const filtered = presets.filter((p) => p.id !== id);
+      await updateProfileData({ printPresets: filtered });
+    } catch (err: any) {
+      console.error('Error deleting preset:', err);
+      alert('Gagal menghapus preset: ' + (err.message || 'Terjadi kesalahan sistem'));
+    }
   };
 
   const handleUpdatePin = async (e: React.FormEvent) => {
@@ -1072,9 +1088,14 @@ Printer berfungsi dengan baik!
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-black text-white text-xs shadow-md transition-all active:scale-[0.98]"
+                  disabled={isSavingPreset}
+                  className={`flex-1 h-11 rounded-xl font-black text-white text-xs shadow-md transition-all ${
+                    isSavingPreset
+                      ? 'bg-emerald-400 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98]'
+                  }`}
                 >
-                  Simpan Preset
+                  {isSavingPreset ? 'Menyimpan...' : 'Simpan Preset'}
                 </button>
               </div>
             </form>
