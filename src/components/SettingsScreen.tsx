@@ -114,6 +114,16 @@ export const SettingsScreen: React.FC = () => {
   const [btLoading, setBtLoading] = useState(false);
   const [btDeviceName, setBtDeviceName] = useState<string | null>(bluetoothPrinter.getDeviceName());
 
+  useEffect(() => {
+    setIsBtConnected(bluetoothPrinter.isConnected());
+    setBtDeviceName(bluetoothPrinter.getDeviceName());
+    const unsub = bluetoothPrinter.addConnectionListener((connected, name) => {
+      setIsBtConnected(connected);
+      setBtDeviceName(name);
+    });
+    return unsub;
+  }, []);
+
   // Firebase Auth Form
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');

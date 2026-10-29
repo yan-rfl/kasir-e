@@ -35,6 +35,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isBtConnected, setIsBtConnected] = useState(bluetoothPrinter.isConnected());
   const [btLoading, setBtLoading] = useState(false);
 
+  // Sync Bluetooth connection state and run auto-reconnect
+  React.useEffect(() => {
+    setIsBtConnected(bluetoothPrinter.isConnected());
+    const unsub = bluetoothPrinter.addConnectionListener((connected) => {
+      setIsBtConnected(connected);
+    });
+
+    // Auto-reconnect if previously connected
+    bluetoothPrinter.initAutoReconnect().catch(() => {});
+
+    return () => {
+      unsub();
+    };
+  }, []);
+
   const toggleBluetooth = async () => {
     if (bluetoothPrinter.isConnected()) {
       await bluetoothPrinter.disconnect();

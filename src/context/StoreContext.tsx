@@ -297,24 +297,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Printing Helper
   const dispatchPrintJob = async (job: PrintJob) => {
     setLastPrintJob(job);
-    setActivePrintModalJob(job);
 
-    // If bluetooth is connected, send raw bytes
-    if (bluetoothPrinter.isConnected() && job.rawBytes) {
+    // If bluetooth is connected or can auto-reconnect, send raw bytes directly to printer
+    let printedViaBluetooth = false;
+    if (job.rawBytes) {
       try {
-        await bluetoothPrinter.printBytes(job.rawBytes);
+        printedViaBluetooth = await bluetoothPrinter.printBytes(job.rawBytes);
       } catch (err) {
-        console.warn('Bluetooth print failed, modal keeps print ulang option available', err);
+        console.warn('Bluetooth print failed or printer not ready', err);
       }
+    }
+
+    // Only show fallback PrintDialogModal if direct bluetooth printing didn't succeed
+    if (!printedViaBluetooth) {
+      setActivePrintModalJob(job);
+    } else {
+      setActivePrintModalJob(null);
     }
   };
 
   const reprintLastJob = async () => {
     if (!lastPrintJob) return;
-    if (bluetoothPrinter.isConnected() && lastPrintJob.rawBytes) {
+    if (lastPrintJob.rawBytes) {
       try {
-        await bluetoothPrinter.printBytes(lastPrintJob.rawBytes);
-        return;
+        const printed = await bluetoothPrinter.printBytes(lastPrintJob.rawBytes);
+        if (printed) {
+          setActivePrintModalJob(null);
+          return;
+        }
       } catch (err) {
         console.warn('Reprint via bluetooth failed', err);
       }
