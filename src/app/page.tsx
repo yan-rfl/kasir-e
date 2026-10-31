@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { PosScreen } from '@/components/PosScreen';
 import { MenuScreen } from '@/components/MenuScreen';
@@ -48,6 +48,58 @@ export default function Home() {
     alert(t.resetSuccessMsg);
   };
 
+  const activeTabRef = useRef(activeTab);
+  const isOverlayHistoryPushed = useRef(false);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  // Handle system back navigation (Android hardware/gesture back, iOS swipe back, browser back)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!window.history.state || !window.history.state.tab) {
+      window.history.replaceState({ tab: 'pos' }, '', window.location.pathname);
+    }
+
+    const handlePopState = () => {
+      if (activeTabRef.current !== 'pos') {
+        isOverlayHistoryPushed.current = false;
+        setActiveTab('pos');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  // Sync activeTab changes with browser history state
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (activeTab !== 'pos') {
+      if (!isOverlayHistoryPushed.current) {
+        window.history.pushState({ tab: activeTab }, '', window.location.pathname);
+        isOverlayHistoryPushed.current = true;
+      } else {
+        window.history.replaceState({ tab: activeTab }, '', window.location.pathname);
+      }
+    } else {
+      isOverlayHistoryPushed.current = false;
+    }
+  }, [activeTab]);
+
+  const handleCloseOverlay = () => {
+    if (isOverlayHistoryPushed.current) {
+      window.history.back();
+    } else {
+      setActiveTab('pos');
+    }
+  };
+
   // If not logged in, require login screen
   if (!isAuthenticated && !isLoading) {
     return <LoginScreen />;
@@ -79,7 +131,7 @@ export default function Home() {
 
             <button
               type="button"
-              onClick={() => setActiveTab('pos')}
+              onClick={handleCloseOverlay}
               className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-all shrink-0 active:scale-95"
               title="Tutup"
               aria-label="Tutup"
