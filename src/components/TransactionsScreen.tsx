@@ -487,53 +487,63 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                 className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"
               >
                 {/* Collapsible Date Group Header */}
-                <div className="bg-slate-50 px-3 py-2.5 sm:px-3.5 sm:py-3 flex items-center justify-between gap-2 border-b border-slate-200">
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    {/* Checkbox for full date group */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleGroup(group.list)}
-                      className="text-slate-500 hover:text-emerald-700 shrink-0"
-                    >
-                      {allGroupSelected ? (
-                        <CheckSquare className="w-5 h-5 text-emerald-600" />
-                      ) : (
-                        <Square className="w-5 h-5 text-slate-400" />
-                      )}
-                    </button>
+                <div className="bg-slate-50 px-3 py-2.5 sm:px-3.5 sm:py-3 flex items-center justify-between gap-2.5 border-b border-slate-200">
+                  {/* Checkbox for full date group */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleGroup(group.list)}
+                    className="p-1 text-slate-500 hover:text-emerald-700 shrink-0 self-center"
+                    title={allGroupSelected ? t.deselectAll : t.selectAll}
+                  >
+                    {allGroupSelected ? (
+                      <CheckSquare className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <Square className="w-5 h-5 text-slate-400" />
+                    )}
+                  </button>
 
-                    <button
-                      type="button"
-                      onClick={() => toggleDateGroup(dateKey)}
-                      className="flex flex-col sm:flex-row sm:items-center sm:gap-2 text-left min-w-0 flex-1"
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Calendar className="w-4 h-4 text-emerald-700 shrink-0" />
-                        <span className="font-extrabold text-slate-900 text-xs sm:text-base truncate">
+                  {/* Date, Receipts Count, and Total (Clickable to toggle group) */}
+                  <button
+                    type="button"
+                    onClick={() => toggleDateGroup(dateKey)}
+                    className="flex items-center gap-2.5 sm:gap-3 text-left min-w-0 flex-1 py-0.5"
+                  >
+                    {/* Centered Calendar Icon */}
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center shrink-0 self-center">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+
+                    {/* Texts: Date + Count in Line 1, Total in Line 2 */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                        <span className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">
                           {group.label}
                         </span>
+                        <span className="text-[11px] text-slate-500 font-semibold whitespace-nowrap">
+                          ({group.list.length} {t.receiptsCount})
+                        </span>
                       </div>
-                      <span className="text-[11px] sm:text-xs text-slate-500 font-semibold pl-5 sm:pl-0 whitespace-nowrap">
-                        ({group.list.length} {t.receiptsCount})
-                      </span>
-                    </button>
-                  </div>
+                      <div className="mt-0.5">
+                        <span className="font-black text-emerald-700 text-xs sm:text-sm">
+                          Rp {formatRupiah(groupTotal)}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
 
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <span className="font-black text-emerald-800 text-xs sm:text-base whitespace-nowrap">
-                      Rp {formatRupiah(groupTotal)}
-                    </span>
-                    <button
-                      onClick={() => toggleDateGroup(dateKey)}
-                      className="p-1 rounded-lg text-slate-500 hover:bg-slate-200 transition-all shrink-0"
-                    >
-                      {isExpanded ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
+                  {/* Expand / Collapse Chevron Button */}
+                  <button
+                    type="button"
+                    onClick={() => toggleDateGroup(dateKey)}
+                    className="w-8 h-8 rounded-xl bg-slate-200/70 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all shrink-0 self-center"
+                    title={isExpanded ? 'Tutup' : 'Buka'}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
 
                 {/* Date Group Body: List of Transactions */}
