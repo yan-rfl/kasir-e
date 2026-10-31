@@ -8,20 +8,17 @@ import { formatRupiah } from '@/lib/escpos';
 import {
   Plus,
   Minus,
-  Search,
   ShoppingCart,
   Trash2,
   Check,
   Banknote,
   Receipt,
   X,
-  Tag,
 } from 'lucide-react';
 
 export const PosScreen: React.FC = () => {
   const {
     menuItems,
-    categories,
     cart,
     cartTotal,
     cartCount,
@@ -32,8 +29,6 @@ export const PosScreen: React.FC = () => {
   } = useStore();
   const { t } = useLanguage();
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState<boolean>(false);
   const [customerNote, setCustomerNote] = useState<string>('');
   const [autoPrint, setAutoPrint] = useState<boolean>(true);
@@ -83,19 +78,10 @@ export const PosScreen: React.FC = () => {
     };
   };
 
-  // Filtered menu items
-  const filteredItems = useMemo(() => {
-    return menuItems.filter((item) => {
-      if (!item.available) return false;
-      const matchCat =
-        selectedCategory === 'all' ||
-        (item.category || '').toLowerCase() === selectedCategory.toLowerCase();
-      const matchSearch =
-        searchQuery.trim() === '' ||
-        item.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCat && matchSearch;
-    });
-  }, [menuItems, selectedCategory, searchQuery]);
+  // Available menu items displayed directly without category or search filter
+  const availableItems = useMemo(() => {
+    return menuItems.filter((item) => item.available);
+  }, [menuItems]);
 
   const handleOpenCheckout = () => {
     if (cartCount === 0) {
@@ -120,77 +106,7 @@ export const PosScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-64px)] pb-44 md:pb-32">
-      {/* Category Tabs & Search Bar */}
-      <div className="bg-white border-b border-slate-200 sticky top-14 z-20 shadow-sm p-3">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between">
-          {/* Category Tabs (Large touch pills with color coordination) */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('all')}
-              className={`h-11 px-5 rounded-xl text-sm font-extrabold whitespace-nowrap transition-all shadow-sm ${
-                selectedCategory === 'all'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-              }`}
-            >
-              {t.categoryAll}
-            </button>
-            {categories.map((cat) => {
-              const theme = getCategoryTheme(cat);
-              const isSelected = selectedCategory.toLowerCase() === cat.toLowerCase();
-              const label =
-                cat === 'makanan'
-                  ? t.categoryFood
-                  : cat === 'minuman'
-                  ? t.categoryDrink
-                  : cat === 'cemilan'
-                  ? t.categorySnack
-                  : cat === 'lainnya'
-                  ? t.categoryOther
-                  : cat.charAt(0).toUpperCase() + cat.slice(1);
-
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`h-11 px-5 rounded-xl text-sm font-extrabold whitespace-nowrap transition-all shadow-sm ${
-                    isSelected
-                      ? `${theme.activePill} shadow-md scale-105`
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative min-w-[240px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t.searchMenu}
-              className="w-full h-11 pl-10 pr-9 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
+    <div className="flex flex-col min-h-[calc(100vh-64px)] pb-32">
       {/* Main Catalog Grid */}
       <div className="max-w-7xl mx-auto px-4 py-5 w-full flex-1">
         {menuItems.length === 0 ? (
@@ -203,19 +119,19 @@ export const PosScreen: React.FC = () => {
               Katalog menu toko Anda masih kosong. Silakan masuk ke tab <b>Menu</b> untuk menambahkan menu makanan atau minuman Anda.
             </p>
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : availableItems.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm max-w-md mx-auto p-6">
             <ShoppingCart className="w-16 h-16 text-slate-300 mx-auto mb-3" />
             <h3 className="text-lg font-bold text-slate-700">
-              {t.emptyMenuFound}
+              Menu Sedang Habis
             </h3>
             <p className="text-sm text-slate-500 mt-1">
-              {t.emptyMenuHint}
+              Semua menu saat ini ditandai habis. Atur ketersediaan menu di kelola Menu.
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-            {filteredItems.map((item) => {
+            {availableItems.map((item) => {
               const inCart = cart[item.id];
               const qty = inCart ? inCart.quantity : 0;
               const theme = getCategoryTheme(item.category);
@@ -313,7 +229,7 @@ export const PosScreen: React.FC = () => {
       </div>
 
       {/* Sticky Bottom Bar / Cart Subtotal */}
-      <div className="fixed bottom-14 md:bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-slate-200 shadow-2xl p-3 md:p-4 print:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-slate-200 shadow-2xl p-3 md:p-4 print:hidden">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           {/* Left: Summary */}
           <div className="flex items-center gap-3">

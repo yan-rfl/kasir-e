@@ -6,15 +6,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useStore } from '@/context/StoreContext';
 import { bluetoothPrinter } from '@/lib/bluetoothPrinter';
 import {
-  ShoppingBag,
   UtensilsCrossed,
   Receipt,
   Settings,
   Printer,
   Wifi,
   WifiOff,
-  Languages,
   Lock,
+  MoreVertical,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -28,12 +27,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   onOpenPinModal,
 }) => {
-  const { language, setLanguage, t } = useLanguage();
+  const { t } = useLanguage();
   const { profile, isFirebaseConfigured, user } = useAuth();
   const { cartCount } = useStore();
 
   const [isBtConnected, setIsBtConnected] = useState(bluetoothPrinter.isConnected());
   const [btLoading, setBtLoading] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Sync Bluetooth connection state and run auto-reconnect
   React.useEffect(() => {
@@ -67,18 +67,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  const handleTabClick = (tab: 'pos' | 'menu' | 'tx' | 'settings') => {
-    if (tab === 'pos') {
-      setActiveTab('pos');
-    } else {
-      onOpenPinModal(tab);
-    }
-  };
-
   return (
     <>
       {/* Top Application Bar */}
-      <header className="sticky top-0 z-30 bg-emerald-700 text-white shadow-md select-none print:hidden w-full overflow-hidden">
+      <header className="sticky top-0 z-30 bg-emerald-700 text-white shadow-md select-none print:hidden w-full overflow-visible">
         <div className="max-w-7xl mx-auto px-2.5 sm:px-4 py-2 flex items-center justify-between gap-2 sm:gap-3 w-full">
           {/* Left: Brand & Store Name */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 sm:flex-initial">
@@ -130,70 +122,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Center: Desktop Navigation Tabs (Consistent Sizing & Clean Alignment) */}
-          <nav className="hidden md:flex items-center gap-1 bg-emerald-800/70 p-1 rounded-2xl border border-emerald-600/50 shrink-0">
-            <button
-              type="button"
-              onClick={() => handleTabClick('pos')}
-              className={`h-10 px-4 rounded-xl text-xs lg:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${
-                activeTab === 'pos'
-                  ? 'bg-white text-emerald-900 shadow-md font-black border border-white'
-                  : 'text-emerald-100 hover:bg-emerald-700/80 border border-transparent'
-              }`}
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>{t.navPos}</span>
-              {cartCount > 0 && (
-                <span className="bg-amber-400 text-emerald-950 text-xs px-2 py-0.5 rounded-full font-black ml-0.5">
-                  {cartCount}
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTabClick('menu')}
-              className={`h-10 px-4 rounded-xl text-xs lg:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${
-                activeTab === 'menu'
-                  ? 'bg-white text-emerald-900 shadow-md font-black border border-white'
-                  : 'text-emerald-100 hover:bg-emerald-700/80 border border-transparent'
-              }`}
-            >
-              <UtensilsCrossed className="w-4 h-4" />
-              <span>{t.navMenu}</span>
-              <Lock className="w-3 h-3 text-emerald-300/80" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTabClick('tx')}
-              className={`h-10 px-4 rounded-xl text-xs lg:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${
-                activeTab === 'tx'
-                  ? 'bg-white text-emerald-900 shadow-md font-black border border-white'
-                  : 'text-emerald-100 hover:bg-emerald-700/80 border border-transparent'
-              }`}
-            >
-              <Receipt className="w-4 h-4" />
-              <span>{t.navTransactions}</span>
-              <Lock className="w-3 h-3 text-emerald-300/80" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTabClick('settings')}
-              className={`h-10 px-4 rounded-xl text-xs lg:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${
-                activeTab === 'settings'
-                  ? 'bg-white text-emerald-900 shadow-md font-black border border-white'
-                  : 'text-emerald-100 hover:bg-emerald-700/80 border border-transparent'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>{t.navSettings}</span>
-              <Lock className="w-3 h-3 text-emerald-300/80" />
-            </button>
-          </nav>
-
-          {/* Right: Quick Actions (Printer, Language) */}
+          {/* Right: Quick Actions (Bluetooth Printer, Three-Dots Menu) */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Bluetooth Thermal Printer Button */}
             <button
@@ -218,90 +147,103 @@ export const Navbar: React.FC<NavbarProps> = ({
               />
             </button>
 
-            {/* Language Switcher */}
-            <button
-              type="button"
-              onClick={() => setLanguage(language === 'id' ? 'en' : 'id')}
-              className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-xl text-xs font-black bg-emerald-800/80 text-emerald-100 border border-emerald-600/50 hover:bg-emerald-800 flex items-center gap-1 sm:gap-1.5 whitespace-nowrap transition-all shadow-sm shrink-0"
-              title="Ganti Bahasa / Switch Language"
-            >
-              <Languages className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-300 shrink-0" />
-              <span>{language.toUpperCase()}</span>
-            </button>
+            {/* Three-dots Menu Button & Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-emerald-100 border flex items-center justify-center transition-all shadow-sm ${
+                  isMenuOpen
+                    ? 'bg-emerald-900 border-emerald-400 text-white'
+                    : 'bg-emerald-800/80 border-emerald-600/50 hover:bg-emerald-800'
+                }`}
+                title="Menu"
+                aria-label="Menu"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+
+              {/* Dropdown Menu */}
+              {isMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-2 w-56 sm:w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 py-1.5 z-50 text-slate-800 animate-fadeIn">
+                    <div className="px-3 py-2 border-b border-slate-100">
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Menu Navigasi
+                      </p>
+                    </div>
+                    <div className="p-1 space-y-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onOpenPinModal('menu');
+                        }}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                            <UtensilsCrossed className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="block leading-tight">{t.navMenu}</span>
+                            <span className="text-[10px] text-slate-400 font-normal">Daftar & kelola menu</span>
+                          </div>
+                        </div>
+                        <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onOpenPinModal('tx');
+                        }}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                            <Receipt className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="block leading-tight">{t.navTransactions}</span>
+                            <span className="text-[10px] text-slate-400 font-normal">Riwayat transaksi</span>
+                          </div>
+                        </div>
+                        <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onOpenPinModal('settings');
+                        }}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl text-sm font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                            <Settings className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="block leading-tight">{t.navSettings}</span>
+                            <span className="text-[10px] text-slate-400 font-normal">Pengaturan toko & PIN</span>
+                          </div>
+                        </div>
+                        <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
-
-      {/* Bottom Bar for Mobile & Small Tablets (< md) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1 px-2 flex items-center justify-around shadow-lg">
-        <button
-          type="button"
-          onClick={() => handleTabClick('pos')}
-          className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all ${
-            activeTab === 'pos'
-              ? 'bg-emerald-50 text-emerald-700'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <div className="relative">
-            <ShoppingBag className="w-5 h-5" />
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 bg-amber-500 text-white text-[10px] w-4 h-4 rounded-full font-black flex items-center justify-center shadow-sm">
-                {cartCount}
-              </span>
-            )}
-          </div>
-          <span className="text-[11px] mt-0.5">{t.navPos}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabClick('menu')}
-          className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all ${
-            activeTab === 'menu'
-              ? 'bg-emerald-50 text-emerald-700'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <div className="flex items-center gap-0.5">
-            <UtensilsCrossed className="w-5 h-5" />
-            <Lock className="w-2.5 h-2.5 text-slate-400" />
-          </div>
-          <span className="text-[11px] mt-0.5">{t.navMenu}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabClick('tx')}
-          className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all ${
-            activeTab === 'tx'
-              ? 'bg-emerald-50 text-emerald-700'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <div className="flex items-center gap-0.5">
-            <Receipt className="w-5 h-5" />
-            <Lock className="w-2.5 h-2.5 text-slate-400" />
-          </div>
-          <span className="text-[11px] mt-0.5">{t.navTransactions}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabClick('settings')}
-          className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all ${
-            activeTab === 'settings'
-              ? 'bg-emerald-50 text-emerald-700'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <div className="flex items-center gap-0.5">
-            <Settings className="w-5 h-5" />
-            <Lock className="w-2.5 h-2.5 text-slate-400" />
-          </div>
-          <span className="text-[11px] mt-0.5">{t.navSettings}</span>
-        </button>
-      </nav>
     </>
   );
 };
