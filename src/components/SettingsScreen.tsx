@@ -491,21 +491,16 @@ Printer berfungsi dengan baik!
           </div>
 
           {/* Card 2: Preset Cetak Rekap (Manage Printed Summary Presets) */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="font-extrabold text-slate-900 text-base md:text-lg flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-emerald-600" />
-                  Preset Cetak Rekap Transaksi
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Atur tombol preset ringkasan penjualan yang muncul di tab Transaksi
-                </p>
-              </div>
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="font-extrabold text-slate-900 text-base md:text-lg flex items-center gap-2">
+                <Layers className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>Preset Cetak Rekap</span>
+              </h3>
               <button
                 type="button"
                 onClick={handleOpenAddPreset}
-                className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition-all shrink-0"
+                className="h-8 sm:h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition-all shrink-0 active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 <span>Tambah</span>
@@ -516,11 +511,11 @@ Printer berfungsi dengan baik!
               {presets.map((preset) => (
                 <div
                   key={preset.id}
-                  className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3"
+                  className="p-3 sm:p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2.5"
                 >
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-slate-900 text-sm truncate">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-black text-slate-900 text-xs sm:text-sm truncate">
                         {preset.name}
                       </span>
                       {preset.filterKeywords && preset.filterKeywords.length > 0 && (
@@ -529,7 +524,7 @@ Printer berfungsi dengan baik!
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
                       <span>Kategori: <b>{preset.category || 'Semua'}</b></span>
                       <span>•</span>
                       <span>Qty: <b>{preset.showItemQty ? 'Ya' : 'Tidak'}</b></span>
@@ -544,7 +539,7 @@ Printer berfungsi dengan baik!
                     <button
                       type="button"
                       onClick={() => handleOpenEditPreset(preset)}
-                      className="w-8 h-8 rounded-lg bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center border border-slate-200 transition-all"
+                      className="w-8 h-8 rounded-lg bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center border border-slate-200 transition-all active:scale-95"
                       title="Edit Preset"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -552,7 +547,7 @@ Printer berfungsi dengan baik!
                     <button
                       type="button"
                       onClick={() => handleDeletePreset(preset.id)}
-                      className="w-8 h-8 rounded-lg bg-white hover:bg-rose-50 text-rose-600 flex items-center justify-center border border-slate-200 transition-all"
+                      className="w-8 h-8 rounded-lg bg-white hover:bg-rose-50 text-rose-600 flex items-center justify-center border border-slate-200 transition-all active:scale-95"
                       title="Hapus Preset"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

@@ -377,23 +377,23 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 pb-32 md:pb-24">
       {/* Top Bar Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-        <div>
-          <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-            <Receipt className="w-7 h-7 text-emerald-600" />
-            {t.txTitle}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
+            <Receipt className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-600 shrink-0" />
+            <span className="truncate">{t.txTitle}</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             {filteredTransactions.length} {t.txSubtitle}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Filter & Sort Button */}
           <button
             type="button"
             onClick={() => setIsFilterModalOpen(true)}
-            className="h-10 px-4 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-extrabold text-sm flex items-center gap-2 shadow-sm transition-all"
+            className="h-10 px-3.5 sm:px-4 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-extrabold text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 shadow-sm transition-all"
           >
             <Filter className="w-4 h-4 text-emerald-600" />
             <span>{t.sortFilterBtn}</span>
@@ -406,7 +406,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
           <button
             type="button"
             onClick={onOpenResetPinModal}
-            className="h-10 px-3.5 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+            className="h-10 w-10 sm:w-auto sm:px-3.5 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
             title={t.resetTransactions}
           >
             <Trash2 className="w-4 h-4" />
@@ -416,12 +416,12 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
       </div>
 
       {/* Floating Multi-Select & Batch Print Bar */}
-      <div className="bg-white rounded-2xl p-3.5 border-2 border-emerald-500/80 shadow-md mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl p-3 sm:p-3.5 border-2 border-emerald-500/80 shadow-md mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Select All Checkbox */}
         <button
           type="button"
           onClick={handleSelectAll}
-          className="flex items-center gap-2 font-black text-sm text-slate-800 hover:text-emerald-700 transition-all select-none"
+          className="flex items-center gap-2 font-black text-sm text-slate-800 hover:text-emerald-700 transition-all select-none self-start sm:self-auto"
         >
           {isAllFilteredSelected ? (
             <CheckSquare className="w-5 h-5 text-emerald-600" />
@@ -439,7 +439,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
         </button>
 
         {/* Dynamic Preset Summary Report Buttons */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           {presets.map((preset, index) => {
             const isFirst = index === 0;
             return (
@@ -448,7 +448,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                 type="button"
                 onClick={() => handlePrintPreset(preset)}
                 disabled={selectedTxIds.size === 0}
-                className={`flex-1 sm:flex-initial h-11 px-4 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all whitespace-nowrap ${
+                className={`h-11 px-4 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all whitespace-nowrap ${
                   selectedTxIds.size > 0
                     ? isFirst
                       ? 'bg-amber-600 hover:bg-amber-700 text-white active:scale-95'
@@ -475,7 +475,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-4 sm:space-y-5">
           {Object.entries(groupedTransactions).map(([dateKey, group]) => {
             const isExpanded = !!expandedDates[dateKey];
             const groupTotal = group.list.reduce((acc, t) => acc + t.totalPrice, 0);
@@ -487,13 +487,13 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                 className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"
               >
                 {/* Collapsible Date Group Header */}
-                <div className="bg-slate-50 p-3.5 flex items-center justify-between border-b border-slate-200">
-                  <div className="flex items-center gap-3">
+                <div className="bg-slate-50 px-3 py-2.5 sm:px-3.5 sm:py-3 flex items-center justify-between gap-2 border-b border-slate-200">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     {/* Checkbox for full date group */}
                     <button
                       type="button"
                       onClick={() => handleToggleGroup(group.list)}
-                      className="text-slate-500 hover:text-emerald-700"
+                      className="text-slate-500 hover:text-emerald-700 shrink-0"
                     >
                       {allGroupSelected ? (
                         <CheckSquare className="w-5 h-5 text-emerald-600" />
@@ -505,25 +505,27 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleDateGroup(dateKey)}
-                      className="flex items-center gap-2 text-left"
+                      className="flex flex-col sm:flex-row sm:items-center sm:gap-2 text-left min-w-0 flex-1"
                     >
-                      <Calendar className="w-4 h-4 text-emerald-700 shrink-0" />
-                      <span className="font-extrabold text-slate-900 text-sm md:text-base">
-                        {group.label}
-                      </span>
-                      <span className="text-xs text-slate-500 font-semibold">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Calendar className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <span className="font-extrabold text-slate-900 text-xs sm:text-base truncate">
+                          {group.label}
+                        </span>
+                      </div>
+                      <span className="text-[11px] sm:text-xs text-slate-500 font-semibold pl-5 sm:pl-0 whitespace-nowrap">
                         ({group.list.length} {t.receiptsCount})
                       </span>
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="font-black text-emerald-800 text-sm md:text-base">
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <span className="font-black text-emerald-800 text-xs sm:text-base whitespace-nowrap">
                       Rp {formatRupiah(groupTotal)}
                     </span>
                     <button
                       onClick={() => toggleDateGroup(dateKey)}
-                      className="p-1 rounded-lg text-slate-500 hover:bg-slate-200 transition-all"
+                      className="p-1 rounded-lg text-slate-500 hover:bg-slate-200 transition-all shrink-0"
                     >
                       {isExpanded ? (
                         <ChevronUp className="w-5 h-5" />
@@ -547,15 +549,15 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                       return (
                         <div
                           key={tx.id}
-                          className={`p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+                          className={`p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 transition-colors ${
                             isSelected ? 'bg-emerald-50/40' : 'hover:bg-slate-50'
                           }`}
                         >
                           {/* Checkbox & ID & Time */}
-                          <div className="flex items-start sm:items-center gap-3">
+                          <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                             <button
                               onClick={() => handleToggleTx(tx.id)}
-                              className="mt-0.5 sm:mt-0 text-slate-400 hover:text-emerald-600"
+                              className="mt-0.5 sm:mt-0 text-slate-400 hover:text-emerald-600 shrink-0"
                             >
                               {isSelected ? (
                                 <CheckSquare className="w-5 h-5 text-emerald-600" />
@@ -564,9 +566,9 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
                               )}
                             </button>
 
-                            <div>
+                            <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-black text-slate-900 text-base">
+                                <span className="font-black text-slate-900 text-sm sm:text-base">
                                   {tx.id}
                                 </span>
                                 <span className="text-xs font-semibold text-slate-400">
@@ -588,7 +590,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
 
                           {/* Price & Action Buttons */}
                           <div className="flex items-center justify-between sm:justify-end gap-2 self-stretch sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                            <span className="font-black text-emerald-700 text-base">
+                            <span className="font-black text-emerald-700 text-sm sm:text-base">
                               Rp {formatRupiah(tx.totalPrice)}
                             </span>
 

@@ -374,8 +374,8 @@ export function textToEscPosBytes(text: string): Uint8Array {
   // ESC ! 0: Select standard character font, regular weight (0x1B, 0x21, 0x00)
   const initCommands = new Uint8Array([0x1b, 0x40, 0x1b, 0x21, 0x00]);
 
-  // Feed 2 lines bottom margin (0x1B, 0x64, 0x02) followed by 3 newlines for clean tear-off
-  const endCommands = new Uint8Array([0x1b, 0x64, 0x02, 0x0a, 0x0a, 0x0a]);
+  // Feed 2 lines bottom margin (0x1B, 0x64, 0x02) for clean, compact tear-off (2-3 lines total)
+  const endCommands = new Uint8Array([0x1b, 0x64, 0x02]);
 
   // Combine into a single byte stream
   const totalLength = initCommands.length + textBytes.length + endCommands.length;
