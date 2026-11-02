@@ -98,6 +98,7 @@ export const SettingsScreen: React.FC = () => {
   const [presetShowQty, setPresetShowQty] = useState(true);
   const [presetShowPrice, setPresetShowPrice] = useState(true);
   const [presetShowTotal, setPresetShowTotal] = useState(true);
+  const [presetShowSubtotal, setPresetShowSubtotal] = useState(true);
   const [presetPrintHeader, setPresetPrintHeader] = useState(true);
   const [presetPrintFooter, setPresetPrintFooter] = useState(true);
   const [presetCustomHeader, setPresetCustomHeader] = useState('');
@@ -221,6 +222,7 @@ export const SettingsScreen: React.FC = () => {
     setPresetShowQty(true);
     setPresetShowPrice(true);
     setPresetShowTotal(true);
+    setPresetShowSubtotal(true);
     setPresetPrintHeader(true);
     setPresetPrintFooter(true);
     setPresetCustomHeader('');
@@ -236,6 +238,7 @@ export const SettingsScreen: React.FC = () => {
     setPresetShowQty(p.showItemQty ?? true);
     setPresetShowPrice(p.showItemPrice ?? true);
     setPresetShowTotal(p.showTotalPrice ?? true);
+    setPresetShowSubtotal(p.showSubtotal !== false);
     setPresetPrintHeader(p.printStoreHeader ?? true);
     setPresetPrintFooter(p.printFooter ?? true);
     setPresetCustomHeader(p.customHeader || '');
@@ -271,6 +274,7 @@ export const SettingsScreen: React.FC = () => {
               showItemQty: presetShowQty,
               showItemPrice: presetShowPrice,
               showTotalPrice: presetShowTotal,
+              showSubtotal: presetShowSubtotal,
               printStoreHeader: presetPrintHeader,
               printFooter: presetPrintFooter,
             };
@@ -289,6 +293,7 @@ export const SettingsScreen: React.FC = () => {
           showItemQty: presetShowQty,
           showItemPrice: presetShowPrice,
           showTotalPrice: presetShowTotal,
+          showSubtotal: presetShowSubtotal,
           printStoreHeader: presetPrintHeader,
           printFooter: presetPrintFooter,
         };
@@ -1059,6 +1064,23 @@ Printer berfungsi dengan baik!
                     type="checkbox"
                     checked={presetShowTotal}
                     onChange={(e) => setPresetShowTotal(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 shrink-0 ml-2"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-800 block">
+                      Cetak Subtotal Menu Terpilih
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      Contoh: Subtotal Item (199) Rp 4.109.000
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={presetShowSubtotal}
+                    onChange={(e) => setPresetShowSubtotal(e.target.checked)}
                     className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 shrink-0 ml-2"
                   />
                 </label>

@@ -12,6 +12,8 @@ import { useStore } from '@/context/StoreContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { AlertTriangle, X } from 'lucide-react';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -49,13 +51,56 @@ export default function Home() {
   };
 
   const activeTabRef = useRef(activeTab);
+  const pinModalActionRef = useRef(pinModalAction);
+  const isResetConfirmOpenRef = useRef(isResetConfirmOpen);
   const isOverlayHistoryPushed = useRef(false);
 
   useEffect(() => {
     activeTabRef.current = activeTab;
   }, [activeTab]);
 
-  // Handle system back navigation (Android hardware/gesture back, iOS swipe back, browser back)
+  useEffect(() => {
+    pinModalActionRef.current = pinModalAction;
+  }, [pinModalAction]);
+
+  useEffect(() => {
+    isResetConfirmOpenRef.current = isResetConfirmOpen;
+  }, [isResetConfirmOpen]);
+
+  // Handle Capacitor native Android back button
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let backHandler: any = null;
+
+    try {
+      if (Capacitor.isNativePlatform()) {
+        App.addListener('backButton', () => {
+          if (isResetConfirmOpenRef.current) {
+            setIsResetConfirmOpen(false);
+          } else if (pinModalActionRef.current !== null) {
+            setPinModalAction(null);
+          } else if (activeTabRef.current !== 'pos') {
+            setActiveTab('pos');
+          } else {
+            App.exitApp();
+          }
+        }).then((handler) => {
+          backHandler = handler;
+        });
+      }
+    } catch (err) {
+      console.warn('Capacitor App listener error:', err);
+    }
+
+    return () => {
+      if (backHandler && backHandler.remove) {
+        backHandler.remove();
+      }
+    };
+  }, []);
+
+  // Handle browser system back navigation (Web/PWA)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -93,7 +138,9 @@ export default function Home() {
   }, [activeTab]);
 
   const handleCloseOverlay = () => {
-    if (isOverlayHistoryPushed.current) {
+    if (Capacitor.isNativePlatform()) {
+      setActiveTab('pos');
+    } else if (isOverlayHistoryPushed.current) {
       window.history.back();
     } else {
       setActiveTab('pos');

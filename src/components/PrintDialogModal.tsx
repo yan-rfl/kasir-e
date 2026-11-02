@@ -41,8 +41,8 @@ export const PrintDialogModal: React.FC = () => {
         </div>
 
         {/* 58mm Monospace Paper Preview */}
-        <div className="p-4 bg-slate-100 overflow-y-auto flex-1 flex justify-center">
-          <div className="bg-white w-[290px] p-4 shadow-md rounded border border-slate-300 font-mono text-[12px] leading-relaxed text-slate-900 select-all whitespace-pre">
+        <div className="p-3 sm:p-4 bg-slate-100 overflow-y-auto flex-1 min-h-0">
+          <div className="mx-auto bg-white w-[290px] max-w-full p-4 shadow-md rounded-2xl border border-slate-300 font-mono text-[12px] leading-relaxed text-slate-900 select-all whitespace-pre block h-auto overflow-x-auto">
             {activePrintModalJob.content}
           </div>
         </div>

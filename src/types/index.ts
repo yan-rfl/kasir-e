@@ -48,6 +48,7 @@ export interface PrintPreset {
   showItemQty: boolean; // default true
   showItemPrice: boolean; // default true
   showTotalPrice: boolean; // default true (shows transactions' grand total)
+  showSubtotal?: boolean; // default true (shows subtotal of filtered items e.g. "Subtotal Item (199) Rp 4.109.000")
   printStoreHeader?: boolean; // default true
   printFooter?: boolean; // default true
   customHeader?: string; // optional custom header

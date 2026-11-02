@@ -374,15 +374,21 @@ export function generatePresetSummaryReceiptText(
     }
   }
 
-  // Calculate grand total of all items in selected transactions
+  // Calculate totals
   const transactionsGrandTotal = transactions.reduce((acc, tx) => acc + (tx.totalPrice || 0), 0);
+  const shouldShowSubtotal = preset.showSubtotal !== false;
+  const shouldShowGrandTotal = preset.showTotalPrice !== false;
+  const hasFilter = filteredItemsSubtotal > 0 && filteredItemsSubtotal !== transactionsGrandTotal;
 
-  if (preset.showTotalPrice) {
+  if (shouldShowSubtotal || shouldShowGrandTotal) {
     lines.push(separator('-'));
-    // If a filter was applied and subtotal differs from grand total, show both subtotal and grand total
-    if (filteredItemsSubtotal > 0 && filteredItemsSubtotal !== transactionsGrandTotal) {
-      lines.push(padLeftRight(`Subtotal Item (${totalItemsCount})`, `Rp ${formatRupiah(filteredItemsSubtotal)}`));
-      lines.push(padLeftRight('TOTAL TRANSAKSI', `Rp ${formatRupiah(transactionsGrandTotal)}`));
+    if (hasFilter) {
+      if (shouldShowSubtotal) {
+        lines.push(padLeftRight(`Subtotal Item (${totalItemsCount})`, `Rp ${formatRupiah(filteredItemsSubtotal)}`));
+      }
+      if (shouldShowGrandTotal) {
+        lines.push(padLeftRight('TOTAL TRANSAKSI', `Rp ${formatRupiah(transactionsGrandTotal)}`));
+      }
     } else {
       lines.push(padLeftRight(`TOTAL (${totalItemsCount} item)`, `Rp ${formatRupiah(transactionsGrandTotal)}`));
     }
