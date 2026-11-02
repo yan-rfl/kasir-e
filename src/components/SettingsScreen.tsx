@@ -137,18 +137,21 @@ export const SettingsScreen: React.FC = () => {
   const [authDomain, setAuthDomain] = useState('');
   const [appId, setAppId] = useState('');
 
-  // PWA Install State
+  // PWA & APK Install State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const standalone =
         window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true;
+        (window.navigator as any).standalone === true ||
+        Boolean((window as any).Capacitor?.isNativePlatform?.());
       setIsInstalled(standalone);
       setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream);
+      setIsAndroid(/android/i.test(navigator.userAgent));
 
       const handleBeforeInstall = (e: Event) => {
         e.preventDefault();
@@ -161,6 +164,18 @@ export const SettingsScreen: React.FC = () => {
   }, []);
 
   const handleInstallApp = async () => {
+    // On Android devices, download the native .apk file directly
+    if (isAndroid) {
+      const a = document.createElement('a');
+      a.href = '/kasir-e.apk';
+      a.download = 'kasir-e.apk';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
+    // On other platforms (Desktop PC, Mac, iOS), trigger PWA install prompt / guidance
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const choiceResult = await deferredPrompt.userChoice;
@@ -659,15 +674,19 @@ Printer berfungsi dengan baik!
                 </div>
               </div>
 
-              {/* Simplified Download App Button (Right next to language as requested) */}
+              {/* Download App Button (Android APK or Desktop/iOS PWA) */}
               <div className="pt-3 border-t border-slate-100">
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Aplikasi Desktop / Mobile (PWA):
+                  {isAndroid
+                    ? (language === 'id' ? 'Aplikasi Android (.apk):' : 'Android App (.apk):')
+                    : (language === 'id' ? 'Aplikasi Desktop / Mobile (PWA):' : 'Desktop / Mobile App (PWA):')}
                 </label>
                 {isInstalled ? (
                   <div className="h-11 px-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center gap-2 shadow-sm">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Aplikasi Sudah Terpasang</span>
+                    <span>
+                      {language === 'id' ? 'Aplikasi Sudah Terpasang' : 'App Already Installed'}
+                    </span>
                   </div>
                 ) : (
                   <button
@@ -675,15 +694,25 @@ Printer berfungsi dengan baik!
                     onClick={handleInstallApp}
                     className="w-full h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
                   >
-                    <div className="flex items-center gap-1">
-                      <Laptop className="w-4 h-4" />
-                      <Smartphone className="w-4 h-4" />
+                    <div className="flex items-center gap-1.5">
+                      {isAndroid ? <Smartphone className="w-4 h-4" /> : <Laptop className="w-4 h-4" />}
+                      {!isAndroid && <Smartphone className="w-4 h-4" />}
                     </div>
-                    <span>{language === 'id' ? 'Pasang / Download Aplikasi' : 'Download / Install App'}</span>
+                    <span>
+                      {isAndroid
+                        ? (language === 'id' ? 'Download Aplikasi Android (.apk)' : 'Download Android App (.apk)')
+                        : (language === 'id' ? 'Pasang / Install Aplikasi (PWA)' : 'Install App (PWA)')}
+                    </span>
                   </button>
                 )}
                 <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                  Bisa dipasang langsung di Komputer (Mac/Windows) atau Smartphone tanpa perlu membuka browser.
+                  {isAndroid
+                    ? (language === 'id'
+                        ? 'Download dan pasang langsung file installer .apk untuk HP / Tablet Android kasir.'
+                        : 'Download and install the native .apk file directly on your Android phone or tablet.')
+                    : (language === 'id'
+                        ? 'Bisa dipasang langsung di Komputer (Mac/Windows) atau Smartphone tanpa perlu membuka browser.'
+                        : 'Can be installed directly on Computer (Mac/Windows) or Smartphone without browser.')}
                 </p>
               </div>
             </div>

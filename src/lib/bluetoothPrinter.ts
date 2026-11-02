@@ -4,6 +4,8 @@
  * Includes Smart Auto-Reconnect & Connection State Broadcasting
  */
 
+import { registerPlugin, Capacitor } from '@capacitor/core';
+
 export interface BluetoothPrinterDevice {
   device: any; // BluetoothDevice
   characteristic: any; // BluetoothRemoteGATTCharacteristic
@@ -11,6 +13,17 @@ export interface BluetoothPrinterDevice {
 }
 
 export type ConnectionListener = (connected: boolean, deviceName: string | null) => void;
+
+interface NativeBluetoothPlugin {
+  listPairedDevices(): Promise<{ devices: Array<{ name: string; address: string }> }>;
+  connect(options: { address?: string }): Promise<{ connected: boolean; name?: string; address?: string }>;
+  disconnect(): Promise<{ connected: boolean }>;
+  isConnected(): Promise<{ connected: boolean; name?: string; address?: string }>;
+  autoReconnect(): Promise<{ connected: boolean; name?: string; address?: string }>;
+  print(options: { data: string }): Promise<{ success: boolean }>;
+}
+
+const NativePrinter = registerPlugin<NativeBluetoothPlugin>('BluetoothPrinterPlugin');
 
 // Known BLE Service UUIDs used by thermal POS printers
 const KNOWN_PRINTER_SERVICES = [
@@ -32,6 +45,10 @@ class BluetoothPrinterService {
   private reconnectInterval: any = null;
   private isInitialized: boolean = false;
 
+  // Native Android state
+  private nativeConnected: boolean = false;
+  private nativeName: string | null = null;
+
   constructor() {
     if (typeof window !== 'undefined') {
       // Listen for tab focus/visibility to check connection
@@ -43,12 +60,25 @@ class BluetoothPrinterService {
     }
   }
 
+  public isNative(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      return Capacitor.isNativePlatform();
+    } catch {
+      return false;
+    }
+  }
+
   public isSupported(): boolean {
     if (typeof window === 'undefined') return false;
+    if (this.isNative()) return true;
     return 'bluetooth' in navigator;
   }
 
   public isConnected(): boolean {
+    if (this.isNative()) {
+      return this.nativeConnected;
+    }
     return (
       this.connectedDevice !== null &&
       this.connectedDevice.device?.gatt?.connected === true
@@ -56,6 +86,9 @@ class BluetoothPrinterService {
   }
 
   public getDeviceName(): string | null {
+    if (this.isNative()) {
+      return this.nativeName || this.getSavedDeviceName() || null;
+    }
     return this.connectedDevice?.name || this.getSavedDeviceName() || null;
   }
 
@@ -264,6 +297,26 @@ class BluetoothPrinterService {
     if (this.isInitialized) return this.isConnected();
     this.isInitialized = true;
 
+    if (this.isNative()) {
+      try {
+        const res = await NativePrinter.autoReconnect();
+        if (res.connected) {
+          this.nativeConnected = true;
+          this.nativeName = res.name || 'Printer';
+          this.notifyListeners(true, this.nativeName);
+          return true;
+        } else {
+          const status = await NativePrinter.isConnected();
+          this.nativeConnected = !!status.connected;
+          this.nativeName = status.name || null;
+          this.notifyListeners(this.nativeConnected, this.nativeName);
+          return this.nativeConnected;
+        }
+      } catch {
+        return false;
+      }
+    }
+
     if (!this.isSupported() || !this.shouldAutoReconnect() || this.isConnected()) {
       return false;
     }
@@ -272,9 +325,34 @@ class BluetoothPrinterService {
   }
 
   /**
-   * Explicit user connect action (shows browser Bluetooth picker)
+   * Explicit user connect action
    */
-  public async connect(): Promise<BluetoothPrinterDevice> {
+  public async connect(): Promise<any> {
+    if (this.isNative()) {
+      try {
+        const { devices } = await NativePrinter.listPairedDevices();
+        if (!devices || devices.length === 0) {
+          throw new Error('Belum ada printer Bluetooth terpasang. Silakan sambungkan (pair) printer Anda di menu Pengaturan Bluetooth HP terlebih dahulu.');
+        }
+
+        const savedName = this.getSavedDeviceName();
+        const target = devices.find((d) => d.name === savedName) || devices[0];
+
+        const res = await NativePrinter.connect({ address: target.address });
+        if (res.connected) {
+          this.nativeConnected = true;
+          this.nativeName = res.name || target.name;
+          this.saveDevicePreferences({ name: this.nativeName });
+          this.notifyListeners(true, this.nativeName);
+          return { name: this.nativeName, address: target.address };
+        } else {
+          throw new Error('Gagal tersambung ke printer');
+        }
+      } catch (err: any) {
+        throw new Error(err.message || 'Gagal tersambung ke printer Bluetooth');
+      }
+    }
+
     if (!this.isSupported()) {
       throw new Error('Web Bluetooth tidak didukung di browser ini. Gunakan Chrome di Android/PC atau gunakan Cetak Layar.');
     }
@@ -318,6 +396,18 @@ class BluetoothPrinterService {
     this.clearDevicePreferences();
     this.stopAutoReconnectTimer();
 
+    if (this.isNative()) {
+      try {
+        await NativePrinter.disconnect();
+      } catch {
+        // ignore
+      }
+      this.nativeConnected = false;
+      this.nativeName = null;
+      this.notifyListeners(false, null);
+      return;
+    }
+
     if (this.connectedDevice?.device?.gatt?.connected) {
       try {
         this.connectedDevice.device.gatt.disconnect();
@@ -332,10 +422,24 @@ class BluetoothPrinterService {
   }
 
   /**
-   * Send ESC/POS raw bytes with chunking (50-100 bytes) and slight delays
-   * Auto-reconnects on-the-fly if printer was temporarily powered off.
+   * Send ESC/POS raw bytes
    */
   public async printBytes(bytes: Uint8Array): Promise<boolean> {
+    if (this.isNative()) {
+      try {
+        let binary = '';
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+        const res = await NativePrinter.print({ data: base64 });
+        return !!res.success;
+      } catch (err: any) {
+        throw new Error(err.message || 'Gagal mencetak ke printer Bluetooth');
+      }
+    }
+
     // If not connected, attempt on-the-fly silent reconnect before failing!
     if (!this.isConnected() || !this.connectedDevice) {
       const reconnected = await this.trySilentReconnect();

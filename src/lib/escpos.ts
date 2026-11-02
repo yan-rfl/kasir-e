@@ -1,6 +1,47 @@
-import { OrderItem, Transaction, ReceiptOptions, PrintPreset } from "@/types";
+import { OrderItem, Transaction, ReceiptOptions, PrintPreset, MenuItem } from "@/types";
 
 export const LINE_WIDTH = 32;
+
+/**
+ * Sorts order or aggregated items based on the order defined in the Menu list (menuItems).
+ * If an item is not found in menuItems, it is placed at the end sorted alphabetically by name.
+ */
+export function sortItemsByMenuOrder<T extends { name: string; menuItemId?: string }>(
+  items: T[],
+  menuItems?: MenuItem[]
+): T[] {
+  if (!menuItems || menuItems.length === 0) {
+    return items;
+  }
+
+  const idMap = new Map<string, number>();
+  const nameMap = new Map<string, number>();
+
+  menuItems.forEach((m, idx) => {
+    if (m.id) idMap.set(m.id, idx);
+    if (m.name) nameMap.set(m.name.trim().toLowerCase(), idx);
+  });
+
+  return [...items].sort((a, b) => {
+    let indexA = a.menuItemId ? idMap.get(a.menuItemId) : undefined;
+    if (indexA === undefined) {
+      indexA = nameMap.get(a.name.trim().toLowerCase());
+    }
+
+    let indexB = b.menuItemId ? idMap.get(b.menuItemId) : undefined;
+    if (indexB === undefined) {
+      indexB = nameMap.get(b.name.trim().toLowerCase());
+    }
+
+    const posA = indexA !== undefined ? indexA : Number.MAX_SAFE_INTEGER;
+    const posB = indexB !== undefined ? indexB : Number.MAX_SAFE_INTEGER;
+
+    if (posA !== posB) {
+      return posA - posB;
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
 
 /**
  * Format currency to Indonesian Rupiah standard string (e.g. 15.000)
@@ -47,7 +88,8 @@ export function generateSingleReceiptText(
   storeName: string = 'Pondok Bakso 168 DOI',
   header?: string,
   footer?: string,
-  options?: ReceiptOptions
+  options?: ReceiptOptions,
+  menuItems?: MenuItem[]
 ): string {
   const lines: string[] = [];
   const opts: ReceiptOptions = {
@@ -84,8 +126,9 @@ export function generateSingleReceiptText(
   }
   lines.push(separator('-'));
 
-  // Items
-  for (const item of tx.items) {
+  // Items sorted by menu order
+  const sortedItems = sortItemsByMenuOrder(tx.items, menuItems);
+  for (const item of sortedItems) {
     lines.push(item.name);
     const qtyPrice = ` ${item.quantity} x ${formatRupiah(item.price)}`;
     const subtotal = formatRupiah(item.price * item.quantity);
@@ -121,7 +164,8 @@ export function generateSingleReceiptText(
  */
 export function generateKawulReceiptText(
   transactions: Transaction[],
-  storeName: string = 'KASIR-E'
+  storeName: string = 'KASIR-E',
+  menuItems?: MenuItem[]
 ): string {
   const lines: string[] = [];
   lines.push(padCenter(storeName));
@@ -139,15 +183,15 @@ export function generateKawulReceiptText(
   lines.push(separator('-'));
 
   // Aggregate items with "bakso" in name (case-insensitive)
-  const itemMap = new Map<string, { name: string; quantity: number; subtotal: number }>();
+  const itemMap = new Map<string, { menuItemId?: string; name: string; quantity: number; subtotal: number }>();
   let filteredBaksoSubtotal = 0;
   let totalBaksoItems = 0;
 
   for (const tx of transactions) {
     for (const item of tx.items) {
       if (item.name.toLowerCase().includes('bakso')) {
-        const key = item.name.trim();
-        const existing = itemMap.get(key) || { name: key, quantity: 0, subtotal: 0 };
+        const key = item.menuItemId || item.name.trim();
+        const existing = itemMap.get(key) || { menuItemId: item.menuItemId, name: item.name.trim(), quantity: 0, subtotal: 0 };
         existing.quantity += item.quantity;
         existing.subtotal += item.price * item.quantity;
         itemMap.set(key, existing);
@@ -161,7 +205,8 @@ export function generateKawulReceiptText(
   if (itemMap.size === 0) {
     lines.push(padCenter('(Tidak ada menu bakso)'));
   } else {
-    for (const item of Array.from(itemMap.values())) {
+    const sortedItems = sortItemsByMenuOrder(Array.from(itemMap.values()), menuItems);
+    for (const item of sortedItems) {
       lines.push(item.name);
       const qtyStr = ` ${item.quantity} porsi`;
       const subtotalStr = formatRupiah(item.subtotal);
@@ -191,7 +236,8 @@ export function generateKawulReceiptText(
  */
 export function generateMamahReceiptText(
   transactions: Transaction[],
-  storeName: string = 'KASIR-E'
+  storeName: string = 'KASIR-E',
+  menuItems?: MenuItem[]
 ): string {
   const lines: string[] = [];
   lines.push(padCenter(storeName));
@@ -209,14 +255,14 @@ export function generateMamahReceiptText(
   lines.push(separator('-'));
 
   // Aggregate all items
-  const itemMap = new Map<string, { name: string; quantity: number; subtotal: number }>();
+  const itemMap = new Map<string, { menuItemId?: string; name: string; quantity: number; subtotal: number }>();
   let grandTotal = 0;
   let totalQty = 0;
 
   for (const tx of transactions) {
     for (const item of tx.items) {
-      const key = item.name.trim();
-      const existing = itemMap.get(key) || { name: key, quantity: 0, subtotal: 0 };
+      const key = item.menuItemId || item.name.trim();
+      const existing = itemMap.get(key) || { menuItemId: item.menuItemId, name: item.name.trim(), quantity: 0, subtotal: 0 };
       existing.quantity += item.quantity;
       existing.subtotal += item.price * item.quantity;
       itemMap.set(key, existing);
@@ -229,7 +275,8 @@ export function generateMamahReceiptText(
   if (itemMap.size === 0) {
     lines.push(padCenter('(Tidak ada transaksi dipilih)'));
   } else {
-    for (const item of Array.from(itemMap.values())) {
+    const sortedItems = sortItemsByMenuOrder(Array.from(itemMap.values()), menuItems);
+    for (const item of sortedItems) {
       lines.push(item.name);
       const qtyStr = ` ${item.quantity}x`;
       const subtotalStr = formatRupiah(item.subtotal);
@@ -254,7 +301,8 @@ export function generatePresetSummaryReceiptText(
   preset: PrintPreset,
   storeName: string = 'KASIR-E',
   headerAddress?: string,
-  footerNote?: string
+  footerNote?: string,
+  menuItems?: MenuItem[]
 ): string {
   const lines: string[] = [];
 
@@ -285,7 +333,7 @@ export function generatePresetSummaryReceiptText(
   const keywords = (preset.filterKeywords || []).map((k) => k.toLowerCase().trim()).filter(Boolean);
   const targetCategory = (preset.category || 'all').toLowerCase();
 
-  const itemMap = new Map<string, { name: string; quantity: number; subtotal: number }>();
+  const itemMap = new Map<string, { menuItemId?: string; name: string; quantity: number; subtotal: number }>();
   let filteredItemsSubtotal = 0;
   let totalItemsCount = 0;
 
@@ -301,8 +349,8 @@ export function generatePresetSummaryReceiptText(
         if (!matchesKeyword) continue;
       }
 
-      const key = item.name.trim();
-      const existing = itemMap.get(key) || { name: key, quantity: 0, subtotal: 0 };
+      const key = item.menuItemId || item.name.trim();
+      const existing = itemMap.get(key) || { menuItemId: item.menuItemId, name: item.name.trim(), quantity: 0, subtotal: 0 };
       existing.quantity += item.quantity;
       existing.subtotal += item.price * item.quantity;
       itemMap.set(key, existing);
@@ -315,7 +363,8 @@ export function generatePresetSummaryReceiptText(
   if (itemMap.size === 0) {
     lines.push(padCenter('(Tidak ada menu yang sesuai filter)'));
   } else {
-    for (const item of Array.from(itemMap.values())) {
+    const sortedItems = sortItemsByMenuOrder(Array.from(itemMap.values()), menuItems);
+    for (const item of sortedItems) {
       lines.push(item.name);
       const qtyPart = preset.showItemQty ? ` ${item.quantity}x` : '';
       const subtotalPart = preset.showItemPrice ? formatRupiah(item.subtotal) : '';

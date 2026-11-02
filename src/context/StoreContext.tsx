@@ -622,7 +622,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       profile.storeName,
       profile.receiptHeader,
       profile.receiptFooter,
-      profile.receiptOptions
+      profile.receiptOptions,
+      menuItems
     );
     const bytes = textToEscPosBytes(text);
     await dispatchPrintJob({
@@ -640,7 +641,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       preset,
       profile.storeName,
       profile.receiptHeader,
-      profile.receiptFooter
+      profile.receiptFooter,
+      menuItems
     );
     const bytes = textToEscPosBytes(text);
     await dispatchPrintJob({
@@ -653,7 +655,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const printKawulReport = async (selectedTxs: Transaction[]) => {
-    const text = generateKawulReceiptText(selectedTxs, profile.storeName);
+    const text = generateKawulReceiptText(selectedTxs, profile.storeName, menuItems);
     const bytes = textToEscPosBytes(text);
     await dispatchPrintJob({
       title: 'Rekap Print Kawul (Bakso)',
@@ -665,7 +667,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const printMamahReport = async (selectedTxs: Transaction[]) => {
-    const text = generateMamahReceiptText(selectedTxs, profile.storeName);
+    const text = generateMamahReceiptText(selectedTxs, profile.storeName, menuItems);
     const bytes = textToEscPosBytes(text);
     await dispatchPrintJob({
       title: 'Rekap Print Mamah (Total)',
